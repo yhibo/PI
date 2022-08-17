@@ -1,3 +1,43 @@
+import SimpleITK as sitk
+from strain_from_motion import *
+from utils.utils_aha import *
+import nibabel as nib
+import os
+import constant
+from datasets.base_dataset import _roll2center_crop
+from datasets.base_dataset import _roll2center
+from datasets.nifti_dataset import resample_nifti
+from scipy.ndimage.measurements import center_of_mass
+import pandas as pd
+import itertools
+import matplotlib.pyplot as plt
+
+
+patients = [f"v{p}" for p in range(1, 2) if p != 3]
+es_times = [10, 11, 11, 11, 11, 9, 9, 10, 10, 9, 11, 9, 10, 11, 11]
+ES = {k: v for (k, v) in zip(patients, es_times)}
+idx = {p: i for (i, p) in enumerate(patients)}
+
+#aha_folder = "/Volumes/Untitled/PI/CMAC/cMAC/GT/SSFP/GT_Corrected"
+#seg_folder = "/Users/yhibo/Downloads/MHD_Data"
+images_folder = 'segs'
+dfields_folder = 'dfield'
+
+
+def get_strain_values(strain_folder):
+    str_results = {"Err": 0, "Ecc": 0, "Srr_d": 0, "Srr_s": 0, "Scc_d": 0, "Scc_s": 0}
+    for patient in patients:
+        strain = np.load(os.path.join(strain_folder, f"strain_{patient}.npy"))
+        strain_rate = np.gradient(strain, axis=0)
+        str_results["Err"] += 100 * strain[ES[patient], 0] / len(patients)
+        str_results["Ecc"] += 100 * strain[ES[patient], 1] / len(patients)
+        str_results["Srr_d"] += np.max(strain_rate[..., 0]) / len(patients) * 30
+        str_results["Scc_d"] += np.min(strain_rate[..., 1]) / len(patients) * 30
+        str_results["Srr_s"] += np.min(strain_rate[..., 0]) / len(patients) * 30
+        str_results["Scc_s"] += np.max(strain_rate[..., 1]) / len(patients) * 30
+    return str_results
+
+
 
 ### Prueba para strain2D con segmentación CARSON
 
