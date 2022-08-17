@@ -1,3 +1,4 @@
 *.npy
 *.nii.gz
 *.h5
+*.png
