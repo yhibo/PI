@@ -111,7 +111,7 @@ def get_motion_and_strain(V_nifti, M_nifti):
                                                             [None]*constant.nframes, [None]*constant.nframes, [None]*constant.nframes)
     
     label = 1
-    strain = np.zeros((constant.nframes, 2))
+    strain = np.zeros((constant.nframes, 3))
 
     for t in range(constant.nframes):
         V_0 = V[..., 0][None, ..., None]
@@ -127,13 +127,15 @@ def get_motion_and_strain(V_nifti, M_nifti):
         mk = mask[0,:,:,:]
 
         (iec[t], ier[t], ierc[t], ec[t], er[t], erc[t],
-        Ec[t], Er[t], Erc[t]) = cine_dense_strain2D(df=df, Icoord=Icoord, mask=mk, ba_channel=0)
+        Ec[t], Er[t], Erc[t], iel[t], el[t], El[t]) = cine_dense_strain3D(df=df, Icoord=Icoord, mask=mk, ba_channel=0)
         (iecm[t], ierm[t], iercm[t], ecm[t], erm[t], ercm[t],
-        Ecm[t], Erm[t], Ercm[t]) = (iec[t][mk==label].mean(), ier[t][mk==label].mean(), ierc[t][mk==label].mean(), 
+        Ecm[t], Erm[t], Ercm[t], ielm[t], elm[t], Elm[t]) = (iec[t][mk==label].mean(), ier[t][mk==label].mean(), ierc[t][mk==label].mean(), 
                                                         ec[t][mk==label].mean(),er[t][mk==label].mean(), erc[t][mk==label].mean(),
-                                                        Ec[t][mk==label].mean(), Er[t][mk==label].mean(), Erc[t][mk==label].mean())
+                                                        Ec[t][mk==label].mean(), Er[t][mk==label].mean(), Erc[t][mk==label].mean(),
+                                                        iel[t][mk==label].mean(), el[t][mk==label].mean(), El[t][mk==label].mean())
         strain[t, 0] = ierm[t]
         strain[t, 1] = iecm[t]
+        strain[t, 2] = ielm[t]
         
 
     return (np.asarray(dfield), strain)

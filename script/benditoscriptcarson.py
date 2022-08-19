@@ -1,4 +1,4 @@
-from seg import get_segmentation
+from segcarson import get_segmentation
 from motion_and_strain import get_motion_and_strain
 from utils.io import read_mhd_to_nifti
 import os
