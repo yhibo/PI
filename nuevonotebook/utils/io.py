@@ -755,4 +755,4 @@ def read_mhd_to_nifti(data_folder, patient):
         if f.endswith(".mhd") and f.startswith(f"{patient}_cSAX_time")
     ]
 
-    return nib.Nifti1Image(np.array(images), np.eye(4))
+    return nib.Nifti1Image(np.array(images).transpose, np.eye(4))
