@@ -2,3 +2,8 @@
 *.nii.gz
 *.h5
 *.png
+*.vtp
+*.mhd
+*.raw
+*.zraw
+*.pdf

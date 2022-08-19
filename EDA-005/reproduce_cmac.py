@@ -14,12 +14,17 @@ from tensorflow.keras.optimizers import Adam
 from vtk.numpy_interface import dataset_adapter as dsa
 
 from datasets import base_dataset
+from datasets.base_dataset import roll_and_pad_256x256_to_center_inv
 from datasets.base_dataset import _roll2center_crop
 from datasets.nifti_dataset import resample_nifti
 from models import deep_strain_model
 from utils import myocardial_strain
 
+from scipy.ndimage import interpolation
+
+
 ######################### Constants and arguments ######################################
+
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s")
 
@@ -376,6 +381,87 @@ def get_strain_and_motion_2(out_folder):
         np.save(os.path.join(results_folder, f"strain_{patient}.npy"), np.asarray(strain_t))
         np.save(os.path.join(results_folder, f"completo_strain_{patient}.npy"), np.asarray(straincompleto_t))
         np.save(os.path.join(results_folder, f"mask_rot_{patient}.npy"), np.asarray(mask_rot_t))
+
+
+def get_strain_and_motion_3(out_folder):
+    results_folder = os.path.join(out_folder, "results")
+    images_folder = os.path.join(out_folder, "images")
+    try:
+        os.mkdir(results_folder)
+    except OSError:
+        pass
+    opt = CarMEN_options()
+    model = deep_strain_model.DeepStrain(Adam, opt=opt)
+    netME = model.get_netME()
+
+    patient = 'v9'
+
+    logging.info(f"Motion and strain on patient {patient}.")
+    V_nifti = nib.load(os.path.join(images_folder, f"{patient}.nii.gz"))
+    M_nifti = nib.load(os.path.join(images_folder, f"{patient}_seg.nii.gz"))
+
+    V_nifti_resampled = resample_nifti(
+        V_nifti, order=1, in_plane_resolution_mm=1.25, number_of_slices=16
+    )
+    M_nifti_resampled = resample_nifti(
+        M_nifti, order=0, in_plane_resolution_mm=1.25, number_of_slices=16
+    )
+
+    center = center_of_mass(M_nifti_resampled.get_fdata()[:, :, :, 0] == 1)
+    V = V_nifti_resampled.get_fdata()
+    M = M_nifti_resampled.get_fdata()
+
+    V = _roll2center_crop(x=V, center=center)
+    M = _roll2center_crop(x=M, center=center)
+
+    I = np.argmax((M == 1).sum(axis=(0, 1, 3)))
+    if I > M.shape[2] // 2:
+        print("flip")
+        V = V[:, :, ::-1]
+        M = M[:, :, ::-1]
+
+    V = normalize(V, axis=(0, 1, 2))
+    mask_end_diastole = M[..., 0]
+    y_t = []
+    strain_t = []
+    straincompleto_t = []
+    mask_rot_t = []
+    for t in range(30):
+        V_0 = V[..., 0][None, ..., None]
+        V_t = V[..., t][None, ..., None]
+        df = gaussian_filter(netME([V_0, V_t]).numpy(), sigma=(0,2,2,0,0))[0]
+        strain = myocardial_strain.MyocardialStrain(
+            mask=mask_end_diastole, flow=df[:, :, :, :]
+        )
+        df = interpolation.zoom(df, [1, 1, 14.0/16.0, 1], order=1)
+        nifti_info = {'center_resampled' : center,
+                      'center_resampled_256x256' : (128,128),
+                      'shape_resampled' : (256,256,14)}
+        y_t.append(roll_and_pad_256x256_to_center_inv(df, nifti_info))
+
+        strain.calculate_strain(lv_label=1)
+
+        straincompleto_t.append(
+            [
+                strain.Err,
+                strain.Ecc,
+            ]
+        )
+
+        strain_t.append(
+            [
+                strain.Err[strain.mask_rot == 1].mean(),
+                strain.Ecc[strain.mask_rot == 1].mean(),
+            ]
+        )
+
+        mask_rot_t.append(strain.mask_rot)
+
+    np.save(os.path.join(results_folder, f"dfield_256_{patient}.npy"), np.asarray(y_t))
+    # np.save(os.path.join(results_folder, f"strain_{patient}.npy"), np.asarray(strain_t))
+    # np.save(os.path.join(results_folder, f"completo_strain_{patient}.npy"), np.asarray(straincompleto_t))
+    # np.save(os.path.join(results_folder, f"mask_rot_{patient}.npy"), np.asarray(mask_rot_t))
+
 
 
 ############################### Validations ############################################
