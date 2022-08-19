@@ -12,8 +12,6 @@ from tvtk.api import tvtk
 import SimpleITK as sitk
 from natsort import natsorted
 from config import CA_PHANTOM
-import nibabel as nib
-
 
 def dfield2vtp(Idfield, Iroi, origin, direction, spacing):
     z, y, x = np.where(Iroi)
@@ -746,13 +744,3 @@ def cat_ft_read_strain(patient, dbtype):
         iel_aha[i-1, :] = np.hstack(([0], iel_aha_i))
 
     return [iec, ier, iel], [iec_aha, ier_aha, iel_aha]
-
-
-def read_mhd_to_nifti(data_folder, patient):
-    images = [
-        sitk.GetArrayFromImage(sitk.ReadImage(os.path.join(data_folder, f)))
-        for f in natsorted(os.listdir(data_folder))
-        if f.endswith(".mhd") and f.startswith(f"{patient}_cSAX_time")
-    ]
-
-    return nib.Nifti1Image(np.array(images), np.eye(4))
