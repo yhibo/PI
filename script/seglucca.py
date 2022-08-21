@@ -10,9 +10,7 @@ from skimage import transform
 from CardIAc_modules.images_utilities import normalize_image, NpArray2VTK
 from skimage import morphology
 from scipy import ndimage
-import matplotlib.pyplot as plt
-from skimage.util import montage
-
+from datasets.base_dataset import pad_256x256
 
 def get_segmentation(data_folder, patient):
 
@@ -44,7 +42,7 @@ def get_segmentation(data_folder, patient):
     frames_shape = (14,256,256) # (z,256,256)
     slice_shape = (256,256) # (256,256)
     volumes = np.zeros((frames,) + frames_shape) # (frames, z, 256, 256)
-    volumes = np.array([sitk.GetArrayFromImage(img) for img in array_images])
+    volumes = np.array([pad_256x256(sitk.GetArrayFromImage(img).transpose()).transpose() for img in array_images])
 
     firstFrame = volumes[0] # (z,256,256)
     middleSlice = firstFrame.shape[0]//2

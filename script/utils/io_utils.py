@@ -14,7 +14,7 @@ from natsort import natsorted
 #from config import CA_PHANTOM
 
 
-CA_PHANTOM = "C:\\Balseiro\\Tesis - MFM\\Datos\\Tagging"
+CA_PHANTOM = "/Volumes/Untitled/PI/CMAC"
 
 def dfield2vtp(Idfield, Iroi, origin, direction, spacing):
     z, y, x = np.where(Iroi)

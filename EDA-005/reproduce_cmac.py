@@ -407,6 +407,10 @@ def get_strain_and_motion_3(out_folder):
         M_nifti, order=0, in_plane_resolution_mm=1.25, number_of_slices=16
     )
 
+    print(np.shape(V_nifti))
+
+    print(np.shape(V_nifti_resampled))
+
     center = center_of_mass(M_nifti_resampled.get_fdata()[:, :, :, 0] == 1)
     V = V_nifti_resampled.get_fdata()
     M = M_nifti_resampled.get_fdata()

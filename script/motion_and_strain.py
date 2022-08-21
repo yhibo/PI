@@ -68,9 +68,11 @@ def get_motion_and_strain(V_nifti, M_nifti):
         M_nifti, order=0, in_plane_resolution_mm=1.25, number_of_slices=16
     )
 
-    center = center_of_mass(M_nifti_resampled.get_fdata()[:, :, :, 0] == 1)
+    center = center_of_mass(M_nifti_resampled.get_fdata()[:, :, :, 0] == 2)
     V = V_nifti_resampled.get_fdata()
     M = M_nifti_resampled.get_fdata()
+
+    rv_pt = center_of_mass(M[:, :, :, 0] == 1)
 
     V = _roll2center_crop(x=V, center=center)
 
@@ -87,9 +89,11 @@ def get_motion_and_strain(V_nifti, M_nifti):
     mask = mask.astype(float)
 
     myo = sitk.GetImageFromArray(mask[0,:,:,:])
-    coord_i, data_i = lv_local_coord_system(myo, 0, False)
+    coord_i, data_i = lv_local_coord_system(myo, 0, True)
+    aha_img = create_aha(myo, rv_pt, 0, True)
 
     Icoord_i = sitk.GetArrayFromImage(coord_i)
+    seg_aha = sitk.GetArrayFromImage(aha_img)
 
     #  # coord --> (dim, 9): # 3x3 = [c_l,c_c,c_r]
     Icoord_i = Icoord_i.reshape(Icoord_i.shape[:3]+(3,3))
@@ -99,6 +103,11 @@ def get_motion_and_strain(V_nifti, M_nifti):
     Icoord = [ldir, cdir, rdir]
 
     dfield = []
+
+    iec_aha = np.zeros((16, constant.nframes))
+    ier_aha = np.zeros((16, constant.nframes))
+    ierc_aha = np.zeros((16, constant.nframes))
+    iel_aha = np.zeros((16, constant.nframes))
 
     iec, ier, ierc, ec, er, erc, Ec, Er, Erc, iel, el, El = ([None]*constant.nframes, [None]*constant.nframes, [None]*constant.nframes, 
                                                             [None]*constant.nframes, [None]*constant.nframes, [None]*constant.nframes, 
@@ -136,6 +145,16 @@ def get_motion_and_strain(V_nifti, M_nifti):
         strain[t, 0] = ierm[t]
         strain[t, 1] = iecm[t]
         strain[t, 2] = ielm[t]
+
+        for j in range(16):
+            rr,cc,jj = np.where(seg_aha == j+1)
+
+            # rho is  1.05 g/cm^3 = 1.05*1e-3 g/mm^3
+            #  vol_aha[j, i] = rr.size * rho
+            iec_aha[j, t] = iec[t][rr,cc,jj].mean() * 100
+            ier_aha[j, t] = ier[t][rr,cc,jj].mean() * 100
+            ierc_aha[j, t] = ierc[t][rr,cc,jj].mean() * 100
+            iel_aha[j, t] = iel[t][rr,cc,jj].mean() * 100
         
 
-    return (np.asarray(dfield), strain)
+    return (np.asarray(dfield), strain, iec_aha, ier_aha, ierc_aha, iel_aha, seg_aha)

@@ -20,7 +20,7 @@ myo = nib.nifti1.Nifti1Image(get_segmentation(data_folder, patient), np.eye(4))
 
 print("Deformacion")
 ####### MOVIMIENTO Y STRAIN
-dfield, strain = get_motion_and_strain(cine, myo)
+dfield, strain, iec_aha, ier_aha, ierc_aha, iel_aha, seg_aha = get_motion_and_strain(cine, myo)
 
 plt.figure()
 plt.title('SEG LUCCA Y CAMPO DEEP')

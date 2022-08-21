@@ -20,4 +20,16 @@ def read_mhd_to_nifti(data_folder, patient):
         if f.endswith(".mhd") and f.startswith(f"{patient}_cSAX_time")
     ]
 
-    return nib.Nifti1Image(np.array(images).transpose(), np.eye(4))
+    return nib.Nifti1Image(np.array(images).transpose(), None)
+
+def convert_mhd_to_nifti(data_folder, patient, out_folder):
+    out_file = os.path.join(out_folder, f"{patient}.nii.gz")
+    csax_images = (
+        [
+            sitk.ReadImage(os.path.join(data_folder, f))
+            for f in natsorted(os.listdir(data_folder))
+            if f.endswith(".mhd") and f.startswith(f"{patient}_cSAX_time")
+        ]
+    )
+    print(out_file)
+    sitk.WriteImage(sitk.JoinSeries(csax_images), out_file)
