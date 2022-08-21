@@ -12,7 +12,7 @@ from utils.strain_from_motion import *
 from utils.utils_aha import *
 import constant
 
-########################## Mask and normalization ######################################
+##########################      Normalization     ######################################
 
 
 def normalize(x, axis=(0, 1, 2)):
@@ -20,26 +20,6 @@ def normalize(x, axis=(0, 1, 2)):
     mu = x.mean(axis=axis, keepdims=True)
     sd = x.std(axis=axis, keepdims=True)
     return (x - mu) / (sd + 1e-8)
-
-
-def get_mask(V, netS):
-    nx, ny, nz, nt = V.shape
-
-    M = np.zeros((nx, ny, nz, nt))
-    v = V.transpose((2, 3, 0, 1)).reshape((-1, nx, ny))  # (nz*nt,nx,ny)
-    v = normalize(v)
-    for t in range(nt):
-        for z in range(nz):
-            m = netS(
-                v[z * nt + t, nx // 2 - 64 : nx // 2 + 64, ny // 2 - 64 : ny // 2 + 64][
-                    None, ..., None
-                ]
-            )
-            M[nx // 2 - 64 : nx // 2 + 64, ny // 2 - 64 : ny // 2 + 64, z, t] += (
-                np.argmax(m, -1).transpose((1, 2, 0)).reshape((128, 128))
-            )
-    return M
-
 
 ######################### Constants and arguments ######################################
 
