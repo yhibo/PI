@@ -18,6 +18,7 @@ cine = nib.load(os.path.join(data_folder, f"{patient}.nii.gz"))
 print("Segmento")
 ####### SEGMENTACION
 myo = nib.nifti1.Nifti1Image(get_segmentation(data_folder, patient), cine.affine)
+print(myo)
 
 print("Deformacion")
 ####### MOVIMIENTO Y STRAIN

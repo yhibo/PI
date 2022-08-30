@@ -11,10 +11,9 @@ import numpy as np
 from tvtk.api import tvtk
 import SimpleITK as sitk
 from natsort import natsorted
-#from config import CA_PHANTOM
+from config import CA_PHANTOM
+import nibabel as nib
 
-
-CA_PHANTOM = "/Volumes/Untitled/PI/CMAC"
 
 def dfield2vtp(Idfield, Iroi, origin, direction, spacing):
     z, y, x = np.where(Iroi)
@@ -144,13 +143,16 @@ def cat_read_mesh(patient):
 
 def cat_read_mylmks(patient, dbtype='3dtag', method='harp',
         tracking_3d=True, morph_int=False, use_roi=True, tracking_edges=True,
-        use_t0=True):
+        use_t0=False, demons_std=None):
     # TODO: implementar para 3dtag - HARP
     if dbtype.lower() == '3dtag':
         lpath = os.path.join(CA_PHANTOM, patient, '3DTAG', 'LMKS', 'VTK_COORDINATES')
     elif dbtype.lower() == 'ssfp':
-        lpath = os.path.join(CA_PHANTOM, 'MHD_Data', patient, 'Deformation',
-                'LMKS', 'VTK_COORDINATES')
+        if demons_std is not None:
+            lpath = os.path.join(CA_PHANTOM, 'MHD_Data', patient, 'DField', 
+                    'LMKS' + demons_std, 'VTK_COORDINATES')
+        else:
+            lpath = os.path.join(CA_PHANTOM, 'MHD_Data', patient, 'DField', 'LMKS', 'VTK_COORDINATES')
 
     prefix = ''
     if  tracking_3d:
@@ -203,11 +205,15 @@ def cat_read_mylmks(patient, dbtype='3dtag', method='harp',
 
 def cat_write_mylmks(patient, my_lmks, dbtype='3dtag', method='harp',
         tracking_3d=True, morph_int=False, use_roi=True, tracking_edges=True,
-        use_t0=True):
+        use_t0=True, demons_std=None):
     if dbtype.lower() == '3dtag':
         lpath = os.path.join(CA_PHANTOM, patient, '3DTAG', 'LMKS', 'VTK_COORDINATES')
     elif dbtype.lower() == 'ssfp':
-        lpath = os.path.join(CA_PHANTOM, 'MHD_Data', patient, 'Deformation',
+        if demons_std is not None:
+            lpath = os.path.join(CA_PHANTOM, 'MHD_Data', patient, 'DField',
+                'LMKS'+demons_std, 'VTK_COORDINATES')
+        else:
+            lpath = os.path.join(CA_PHANTOM, 'MHD_Data', patient, 'DField',
                 'LMKS', 'VTK_COORDINATES')
 
     if not os.path.lexists(lpath):
@@ -317,7 +323,7 @@ def cat_read_lmks(patient, ba_channel_i, ap2ba_i, dbtype='3dtag', coord='vtk',
         lmks1 = lmks1.points.to_array()
 
         if ap2ba_i == 0:
-            idsort = np.argsort(lmks1[:, ba_channel_i])[::-1] # From apex to base
+            idsort = np.argsort(lmks1[:, ba_channel_i])[::-1] # From base to apex
         else:
             idsort = np.argsort(lmks1[:, ba_channel_i]) # From apex to base
 
@@ -415,9 +421,8 @@ def cat_read_sfftp_image(patient,morph_int=False):
     return I
 
 
-def cat_read_dfield(patient, method='demons', tracking_3d=False,
+def cat_read_dfield(dfpath, method='demons', tracking_3d=False,
         morph_int=False, use_roi=True, tracking_edges=True, use_t0=True):
-    path = os.path.join(CA_PHANTOM, 'MHD_Data', patient, 'Deformation', 'cSAX_New')
 
     prefix='dfield'
     if tracking_3d:
@@ -425,8 +430,8 @@ def cat_read_dfield(patient, method='demons', tracking_3d=False,
     else:
         prefix= prefix + '_2d'
 
-    #if tracking_edges:
-    #    prefix = prefix + '-edge'
+    if tracking_edges:
+        prefix = prefix + '-edge'
 
     if use_roi:
         prefix = prefix + '-roi'
@@ -444,8 +449,8 @@ def cat_read_dfield(patient, method='demons', tracking_3d=False,
         prefix = prefix + '_ft_bspline_'
 
 
-    fname = [os.path.join(path,f) for f in os.listdir(path) if
-            f.startswith(prefix) and f.endswith('.mhd')]
+    fname = [os.path.join(dfpath,f) for f in os.listdir(dfpath) if
+            prefix in f and f.endswith('.mhd')]
     fname = natsorted(fname)
     I = []
     for f in fname:
@@ -699,3 +704,45 @@ def cat_read_strain(patient, dbtype='3dtag', method='harp',
 
     return meshes
 
+
+def cat_ft_read_strain(patient, dbtype):
+    meshes = cat_read_results_strain(patient, dbtype=dbtype)
+
+    nframes = len(meshes)
+
+    iec = np.zeros((meshes[0].number_of_points, nframes))
+    ier = np.zeros((meshes[0].number_of_points, nframes))
+    iel = np.zeros((meshes[0].number_of_points, nframes))
+
+    for i in range(len(meshes)):
+        iec[:, i] = meshes[i].point_data.get_array('circStrain').to_array() * 100
+        ier[:, i] = meshes[i].point_data.get_array('radStrain').to_array() * 100
+        iel[:, i] = meshes[i].point_data.get_array('longStrain').to_array() * 100
+
+
+    c2p = tvtk.CellDataToPointData()
+    c2p.set_input_data(meshes[0])
+    c2p.update()
+
+    aha = np.round(c2p.get_output().point_data.get_array('AHA17').to_array()).astype(int)
+
+
+    # Calculamos los aha por region
+    iec_aha = np.zeros((17, nframes+1))
+    ier_aha = np.zeros((17, nframes+1))
+    iel_aha = np.zeros((17, nframes+1))
+
+
+    for i in range(1, 17):
+        idaha = aha == i
+
+        iec_aha_i = iec[idaha,:].mean(axis=0)
+        ier_aha_i = ier[idaha,:].mean(axis=0)
+        iel_aha_i = iel[idaha,:].mean(axis=0)
+
+        # Agregamos el 0 al principio
+        iec_aha[i-1, :] = np.hstack(([0], iec_aha_i))
+        ier_aha[i-1, :] = np.hstack(([0], ier_aha_i))
+        iel_aha[i-1, :] = np.hstack(([0], iel_aha_i))
+
+    return [iec, ier, iel], [iec_aha, ier_aha, iel_aha]

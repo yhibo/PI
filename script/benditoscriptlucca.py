@@ -32,7 +32,7 @@ plt.plot(100*strain[:,0], color='r', label="R", marker='.')
 plt.legend()
 plt.figure()
 plt.title('SEG LUCCA Y CAMPO DEEP')
-plt.plot(100*strain[:,2]*128/16, color='g', label="L", marker='.')
+plt.plot(100*strain[:,2], color='g', label="L", marker='.')
 plt.legend()
 plt.show()
 
