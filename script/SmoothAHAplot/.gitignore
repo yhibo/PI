@@ -1,0 +1,10 @@
+# Sensitive or high-churn files
+.idea/
+
+# File-based project format:
+*.iws
+
+# Virtual environment
+/venv
+
+__pycache__/

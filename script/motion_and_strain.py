@@ -126,7 +126,7 @@ def get_motion_and_strain(V_nifti, M_nifti):
         strain[t, 1] = iecm[t]
         strain[t, 2] = ielm[t]
 
-        for j in range(17):
+        for j in range(16):
             rr,cc,jj = np.where(seg_aha == j+1)
 
             # rho is  1.05 g/cm^3 = 1.05*1e-3 g/mm^3

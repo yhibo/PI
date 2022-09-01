@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import nibabel as nib
 from datasets.base_dataset import pad_256x256
 
-patients = [f"v{p}" for p in range(1, 17) if p != 3]
+patients = [f"v{p}" for p in range(9, 10) if p != 3]
 output_folder = os.path.join(os.getcwd(),'results')
 
 for patient in patients:
@@ -49,4 +49,5 @@ for patient in patients:
 
     strain_folder = os.path.join(output_folder,'strain','our_seg')
     strain_aha = np.asarray([iec_aha, ier_aha, ierc_aha, iel_aha])
-    np.save(os.path.join(strain_folder, f"{patient}_strain.npy"), strain_aha)
+    np.save(os.path.join(strain_folder, f"{patient}_strain_aha.npy"), strain_aha)
+    np.save(os.path.join(strain_folder, f"{patient}_strain.npy"), np.asarray(strain))

@@ -11,25 +11,28 @@ from scipy.ndimage.measurements import center_of_mass
 import pandas as pd
 import itertools
 import matplotlib.pyplot as plt
-from utils.utils_aha import lv_local_coord_system, create_aha, add_ahaInfo2pd
 
-smooth_strain = 4
-strain_correction = True
+patient = 'v9'
 
-myo = sitk.GetArrayFromImage(sitk.ReadImage("v9/cMAC/GT/SSFP/GT_Corrected/v9_corr.mhd"))
+mask = sitk.GetArrayFromImage(sitk.ReadImage("v9/cMAC/GT/SSFP/GT_Corrected/v9_corr.mhd"))
 
-dfa = [None]*constant.nframes
-dfa[0] = sitk.GetArrayFromImage(sitk.ReadImage(f"v9/MHD_Data/v9/DField/cSAX_222_221/v9_cSAX_dfield_3d-edge_ft_demons_time_1.mhd"))
+dfi = [None]*constant.nframes
+dfi[0] = sitk.GetArrayFromImage(sitk.ReadImage(f"v9/MHD_Data/v9/DField/cSAX_222_221/v9_cSAX_dfield_3d-edge_ft_demons_time_1.mhd"))
 for t in range(1, constant.nframes):
-    dfa[t] = dfa[t-1] + sitk.GetArrayFromImage(sitk.ReadImage(f"v9/MHD_Data/v9/DField/cSAX_222_221/v9_cSAX_dfield_3d-edge_ft_demons_time_{t+1}.mhd"))
+    dfi[t] = dfi[t-1] + sitk.GetArrayFromImage(sitk.ReadImage(f"v9/MHD_Data/v9/DField/cSAX_222_221/v9_cSAX_dfield_3d-edge_ft_demons_time_{t+1}.mhd"))
 
 print(patient)
 
+#I = np.argmax((mask == 1).sum(axis=(1, 2)))
+#if I > mask.shape[0] // 2:
+#    mask = mask[ ::-1, :, :]
 
 Icoord = []
 
-Icoord_i = sitk.ReadImage("v9/cMAC/GT/SSFP/GT_Corrected/v9_corr_local_coord_dilated.mhd")
-aha_i = sitk.ReadImage("v9/cMAC/GT/SSFP/GT_Corrected/v9_corr_aha_dilated.mhd")
+myo = sitk.GetImageFromArray(mask)
+coord_i, data_i = lv_local_coord_system(myo, 0, False)
+
+Icoord_i = sitk.GetArrayFromImage(coord_i)
 
 #  # coord --> (dim, 9): # 3x3 = [c_l,c_c,c_r]
 Icoord_i = Icoord_i.reshape(Icoord_i.shape[:3]+(3,3))
@@ -54,24 +57,18 @@ strain = np.zeros((constant.nframes, 2))
 
 for t in range(constant.nframes):
     #dfi.append(_roll2center(x=dfield[t].squeeze(), center=center).transpose((3,2,0,1))[(1,0,2),:,:,:])
-    df = dfa[t].transpose((3,0,1,2))
+    df = dfi[t].transpose((3,0,1,2))
     mk = mask
     (iec[t], ier[t], ierc[t], ec[t], er[t], erc[t],
     Ec[t], Er[t], Erc[t]) = cine_dense_strain2D(df=df, Icoord=Icoord[0], mask=mk, ba_channel=0)
-
-    if smooth_strain > 0:
-        from scipy.ndimage.filters import convolve1d as convolve1d
-        iec_aha = convolve1d(iec_aha, np.ones(smooth_strain)/smooth_strain, axis=1)
-        ier_aha = convolve1d(ier_aha, np.ones(smooth_strain)/smooth_strain, axis=1)
-
     (iecm[t], ierm[t], iercm[t], ecm[t], erm[t], ercm[t],
     Ecm[t], Erm[t], Ercm[t]) = (iec[t][mk==label].mean(), ier[t][mk==label].mean(), ierc[t][mk==label].mean(), 
                                                     ec[t][mk==label].mean(),er[t][mk==label].mean(), erc[t][mk==label].mean(),
                                                     Ec[t][mk==label].mean(), Er[t][mk==label].mean(), Erc[t][mk==label].mean())
-    strain[t, 0] = erm[t]
-    strain[t, 1] = ecm[t]
 
-np.save("strain_nuestro/strain_{}.npy".format(patient), strain)
+strain[:, 0] = np.array(erm) - np.arange(constant.nframes) * np.array(erm) / ( constant.nframes - 1)
+strain[:, 1] = np.array(ecm) - np.arange(constant.nframes) * np.array(ecm) / ( constant.nframes - 1)
+np.save("strain_nuestro/our_seg/strain_demons_{}.npy".format(patient), strain)
 
 
 plt.figure()

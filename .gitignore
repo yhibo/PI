@@ -7,3 +7,4 @@
 *.raw
 *.zraw
 *.pdf
+.DS_Store
