@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import nibabel as nib
 from datasets.base_dataset import pad_256x256
+import time
 
 patients = [f"v{p}" for p in range(9, 10) if p != 3]
 output_folder = os.path.join(os.getcwd(),'results')
@@ -28,16 +29,20 @@ for patient in patients:
         
 
     print("Segmento")
+    start_time = time.time()
     ####### SEGMENTACION
     seg_folder = os.path.join(output_folder,'images','our_seg')
     myo = nib.nifti1.Nifti1Image(get_segmentation(data_folder, patient), cine.affine)
     nib.save(myo, os.path.join(seg_folder, f"{patient}_seg.nii.gz"))
     print("Shape de segmentacion: ", np.shape(myo))
+    print("--- Segmentation took %s seconds ---" % (time.time() - start_time))
 
 
     print("Deformacion")
+    start_time = time.time()
     ####### MOVIMIENTO Y STRAIN
     dfield, strain, iec_aha, ier_aha, ierc_aha, iel_aha, seg_aha = get_motion_and_strain(cine, myo)
+    print("--- Motion estrimation took %s seconds ---" % (time.time() - start_time))
 
     aha_img = nib.Nifti1Image(seg_aha, cine.affine)
     nib.save(aha_img, os.path.join(output_folder,'images','our_seg',f"{patient}_aha.nii.gz"))
