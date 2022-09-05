@@ -8,3 +8,4 @@
 *.zraw
 *.pdf
 .DS_Store
+*.cfg
