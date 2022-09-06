@@ -20,5 +20,5 @@ class DeepStrain(BaseModel):
     def get_netME(self):
         carmen = networks.CarMEN(self.optimizer, self.opt)
         netME = carmen.get_model()
-        netME.load_weights(self.opt.pretrained_models_netME)
+        #netME.load_weights(self.opt.pretrained_models_netME)
         return netME

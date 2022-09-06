@@ -184,8 +184,10 @@ class CarMEN():
             model.compile(loss=None, 
                           optimizer=self.optimizer(learning_rate=0))
         else:
+            # model.compile(loss=self.opt.criterion_netME, 
+            #               loss_weights=loss_w, 
+            #               optimizer=self.optimizer(learning_rate=self.opt.netME_lr))
             model.compile(loss=self.opt.criterion_netME, 
-                          loss_weights=self.opt.loss_weights, 
                           optimizer=self.optimizer(learning_rate=self.opt.netME_lr))
     def get_model(self):    
         V_0 = keras.Input(shape=self.opt.volume_shape) 
@@ -198,33 +200,35 @@ class CarMEN():
             model = keras.Model(inputs=[V_0, V_t], outputs=u)
             self.compile_model(model)
         else:
-            inputs  = []
-            outputs = []
-            loss_w  = []
-            if self.opt.lambda_i > 0.0:
-                # 1. Intensity loss term
-                V_0_pred = warp(V_t, motion_estimates)
-                inputs  += [V_0, V_t]
-                outputs += [V_0_pred]
-                loss_w  += [self.opt.lambda_i]
-            if self.opt.lambda_a > 0.0:
-                # 2. Anatomical loss term
-                M_0 = keras.Input(shape=self.opt.label_shape)
-                M_t = keras.Input(shape=self.opt.label_shape)
-                M_t_split = tf.split(M_t, M_t.shape[-1], -1)
-                M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), motion_estimates) for mt in M_t_split], -1)    
-                M_0_pred  = keras.activations.softmax(M_0_pred)                
-                inputs  += [M_0, M_t]
-                outputs += [M_0_pred]  
-                loss_w  += [self.opt.lambda_a]
-            if self.opt.lambda_s > 0.0:   
-                # 3. Smoothness loss term adjusted by resolution
-                res = keras.Input(shape=(1,1,1,3))
-                inputs  += [res]
-                outputs += [motion_estimates*res]  
-                loss_w  += [self.opt.lambda_s]
+            # inputs  = []
+            # outputs = []
+            # loss_w  = []
+            # if self.opt.lambda_i > 0.0:
+            #     # 1. Intensity loss term
+            #     V_0_pred = warp(V_t, u)
+            #     inputs  += [V_0, V_t]
+            #     outputs += [V_0_pred]
+            #     loss_w  += [self.opt.lambda_i]
+            # if self.opt.lambda_a > 0.0:
+            #     # 2. Anatomical loss term
+            #     M_0 = keras.Input(shape=self.opt.label_shape)
+            #     M_t = keras.Input(shape=self.opt.label_shape)
+            #     M_t_split = tf.split(M_t, M_t.shape[-1], -1)
+            #     M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), u) for mt in M_t_split], -1)    
+            #     M_0_pred  = keras.activations.softmax(M_0_pred)                
+            #     inputs  += [M_0, M_t]
+            #     outputs += [M_0_pred]  
+            #     loss_w  += [self.opt.lambda_a]
+            # if self.opt.lambda_s > 0.0:   
+            #     # 3. Smoothness loss term adjusted by resolution
+            #     res = keras.Input(shape=(1,1,1,3))
+            #     inputs  += [res]
+            #     outputs += [u*res]  
+            #     loss_w  += [self.opt.lambda_s]
 
-            model = keras.Model(inputs=inputs, outputs=outputs)
-            self.compile_model(model, loss_w=loss_w)
+            # model = keras.Model(inputs=inputs, outputs=outputs)
+            # self.compile_model(model, loss_w=loss_w)
+            model = keras.Model(inputs=[V_0, V_t], outputs=u)
+            self.compile_model(model)
             
         return model
