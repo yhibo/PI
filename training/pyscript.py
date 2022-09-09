@@ -76,21 +76,30 @@ class CarMEN_options:
         self.netME_lr = 1e-4
 
 
+
+
+tf.debugging.set_log_device_placement(True)
+gpus = tf.config.list_logical_devices('GPU')
+strategy = tf.distribute.MirroredStrategy(gpus)
 opt = CarMEN_options()
-model = deep_strain_model.DeepStrain(Adam, opt=opt)
-netME = model.get_netME()
+
+with strategy.scope():
+    model = deep_strain_model.DeepStrain(Adam, opt=opt)
+    netME = model.get_netME()
 
 
-f = open("training_log.txt", "w")
+    # f = open("training_log.txt", "w")
 
-f.write("GPU used: " + str(tf.config.list_physical_devices('GPU')) + " \n")
+    # with open("training_log.txt", "a") as f:
+        # f.write("GPU used: " + str(tf.config.list_physical_devices('GPU')) + " \n")
+        # f.close()
 
 
 ######################### Data loading ######################################
 DATA_FOLDER = 'data/training'
 
-volumes_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}.nii.gz")) for i in range(1, 2)]
-segs_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}_seg.nii.gz")) for i in range(1, 2)]
+volumes_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}.nii.gz")) for i in range(1, 101)]
+segs_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}_seg.nii.gz")) for i in range(1, 101)]
 
 volumes = [v.get_fdata() for v in volumes_nifti]
 segs = [s.get_fdata() for s in segs_nifti]
@@ -129,10 +138,15 @@ def train_step(x, y):
     netME.optimizer.apply_gradients(zip(grads, netME.trainable_weights))
     return loss_value
 
+@tf.function
+def distributed_train_step(x, y):
+  per_replica_losses = strategy.run(train_step, args=(x,y))
+  return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
+                         axis=None)
 
 ######################### Training ######################################
 
-f.write("Loading data to GPU memory...")
+# f.write("Loading data to GPU memory...")
 
 V0_train = tf.data.Dataset.from_tensor_slices(V0)
 del V0
@@ -158,28 +172,36 @@ gc.collect()
 x_train = tf.data.Dataset.zip((V0_train, Vt_train))
 y_train = tf.data.Dataset.zip((V0_train, Vt_train, M0_train, Mt_train, res_train))
 
+batch_size = 5
+x_train = x_train.shuffle(buffer_size=50).batch(batch_size)
+y_train = y_train.shuffle(buffer_size=50).batch(batch_size)
+gc.collect()
 
-f.write("Training started\n")
+x_train = strategy.experimental_distribute_dataset(x_train)
+y_train = strategy.experimental_distribute_dataset(y_train)
+gc.collect()
 
+# f.write("Training started\n")
 
 del V0_train, Vt_train, M0_train, Mt_train, res_train
 gc.collect()
 
 
-batch_size = 5
 for epoch in range(300):
     start_time = time.time()
     print("Start of epoch %d" % (epoch,))
     # Iterate over the batches of the dataset.
-    for step, (x_batch_train, y_batch_train) in enumerate(zip(x_train.shuffle(buffer_size=50).batch(batch_size), y_train.shuffle(buffer_size=50).batch(batch_size))):
-        loss_value = train_step(x_batch_train, y_batch_train)
-        if step % 10 == 0:
-            f.write("Training loss (for one batch) at step %d: %.4f \n" % (step, float(loss_value)))
-            f.write("Seen so far: %s samples \n" % ((step + 1) * batch_size))
-    f.write("Time taken for epoch %d: %.2fs \n" % (epoch, time.time() - start_time))
+    for step, (x_batch_train, y_batch_train) in enumerate(zip(x_train, y_train)):
+        loss_value = distributed_train_step(x_batch_train, y_batch_train)
+        # if step % 10 == 0:
+            # f.write("Training loss (for one batch) at step %d: %.4f \n" % (step, float(loss_value)))
+            # f.write("Seen so far: %s samples \n" % ((step + 1) * batch_size))
+    # f.write("Time taken for epoch %d: %.2fs \n" % (epoch, time.time() - start_time))
+    print("Time taken for epoch %d: %.2fs" % (epoch, time.time() - start_time))
+# f.write("Saving model\n")
 
-f.write("Saving model\n")
+
 netME.save_weights("netME_weights.h5")
-f.write("Model saved\n")
+# f.write("Model saved\n")
 
-f.close()
+# f.close()
