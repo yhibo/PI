@@ -98,8 +98,8 @@ with strategy.scope():
 ######################### Data loading ######################################
 DATA_FOLDER = 'data/training'
 
-volumes_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}.nii.gz")) for i in range(1, 101)]
-segs_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}_seg.nii.gz")) for i in range(1, 101)]
+volumes_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}.nii.gz")) for i in range(1, 3)]
+segs_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}_seg.nii.gz")) for i in range(1, 3)]
 
 volumes = [v.get_fdata() for v in volumes_nifti]
 segs = [s.get_fdata() for s in segs_nifti]
@@ -131,7 +131,7 @@ gc.collect()
 def train_step(x, y):
     with tf.GradientTape() as tape:
         loss_value = 0
-        for i in range(len(x)):
+        for i in range(len(x[0])):
             logits = netME([x[0][i], x[1][i]], training=True)
             loss_value += criterion_netME([y[0][i], y[1][i], y[2][i], y[3][i], y[4][i]], logits)
     grads = tape.gradient(loss_value, netME.trainable_weights)
