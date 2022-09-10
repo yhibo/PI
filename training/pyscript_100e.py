@@ -44,9 +44,9 @@ def criterion_netME(y_true, y_pred):
     M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), u) for mt in M_t_split], -1)    
     M_0_pred  = keras.activations.softmax(M_0_pred)
 
-    lambda_i = np.array(0.01, dtype= np.float64)
-    lambda_a = np.array(0.5, dtype= np.float64)
-    lambda_s = np.array(0.1, dtype= np.float64)
+    lambda_i = np.array(0.01, dtype= np.float32)
+    lambda_a = np.array(0.5, dtype= np.float32)
+    lambda_s = np.array(0.1, dtype= np.float32)
 
     dice = Dice()
     grad = Grad()
@@ -57,14 +57,14 @@ def criterion_netME(y_true, y_pred):
 
     # Anatomical loss
     L_a = 0
-    L_a += dice.loss(K.cast(M_0==0, dtype=tf.float64), K.cast(M_0_pred==0, dtype=tf.float64))
-    L_a += dice.loss(K.cast(M_0==1, dtype=tf.float64), K.cast(M_0_pred==1, dtype=tf.float64))
-    L_a += dice.loss(K.cast(M_0==2, dtype=tf.float64), K.cast(M_0_pred==2, dtype=tf.float64))
-    L_a += dice.loss(K.cast(M_0==3, dtype=tf.float64), K.cast(M_0_pred==3, dtype=tf.float64))
+    L_a += dice.loss(K.cast(M_0==0, dtype=tf.float32), K.cast(M_0_pred==0, dtype=tf.float32))
+    L_a += dice.loss(K.cast(M_0==1, dtype=tf.float32), K.cast(M_0_pred==1, dtype=tf.float32))
+    L_a += dice.loss(K.cast(M_0==2, dtype=tf.float32), K.cast(M_0_pred==2, dtype=tf.float32))
+    L_a += dice.loss(K.cast(M_0==3, dtype=tf.float32), K.cast(M_0_pred==3, dtype=tf.float32))
     L_a = L_a/4.0
 
     # Smoothness loss
-    L_s = grad.loss([],K.cast(u,dtype=tf.float64))
+    L_s = grad.loss([],K.cast(u,dtype=tf.float32))
 
     return lambda_i * L_i + lambda_a * L_a + lambda_s * L_s
 
@@ -101,9 +101,9 @@ DATA_FOLDER = 'data/training'
 volumes_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}.nii.gz")) for i in range(1, 101)]
 segs_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}_seg.nii.gz")) for i in range(1, 101)]
 
-volumes = [v.get_fdata() for v in volumes_nifti]
+volumes = [normalize(v.get_fdata(dtype=np.float32), axis=(0, 1, 2)) for v in volumes_nifti]
 segs = [s.get_fdata() for s in segs_nifti]
-reslist = [np.array(v.header.get_zooms()[:-1]+(v.shape[-1],), dtype=np.float64) for v in volumes_nifti]
+reslist = [np.array(v.header.get_zooms()[:-1]+(v.shape[-1],), dtype=np.float32) for v in volumes_nifti]
 
 del volumes_nifti, segs_nifti
 gc.collect()
@@ -131,7 +131,7 @@ gc.collect()
 def train_step(x, y):
     with tf.GradientTape() as tape:
         loss_value = 0
-        for i in range(len(x)):
+        for i in range(len(x[0])):
             logits = netME([x[0][i], x[1][i]], training=True)
             loss_value += criterion_netME([y[0][i], y[1][i], y[2][i], y[3][i], y[4][i]], logits)
     grads = tape.gradient(loss_value, netME.trainable_weights)
@@ -172,7 +172,7 @@ gc.collect()
 x_train = tf.data.Dataset.zip((V0_train, Vt_train))
 y_train = tf.data.Dataset.zip((V0_train, Vt_train, M0_train, Mt_train, res_train))
 
-batch_size = 5
+batch_size = 10
 x_train = x_train.shuffle(buffer_size=50).batch(batch_size)
 y_train = y_train.shuffle(buffer_size=50).batch(batch_size)
 gc.collect()

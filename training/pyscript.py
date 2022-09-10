@@ -131,7 +131,7 @@ gc.collect()
 def train_step(x, y):
     with tf.GradientTape() as tape:
         loss_value = 0
-        for i in range(len(x)):
+        for i in range(len(x[0])):
             logits = netME([x[0][i], x[1][i]], training=True)
             loss_value += criterion_netME([y[0][i], y[1][i], y[2][i], y[3][i], y[4][i]], logits)
     grads = tape.gradient(loss_value, netME.trainable_weights)
@@ -172,7 +172,7 @@ gc.collect()
 x_train = tf.data.Dataset.zip((V0_train, Vt_train))
 y_train = tf.data.Dataset.zip((V0_train, Vt_train, M0_train, Mt_train, res_train))
 
-batch_size = 5
+batch_size = 10
 x_train = x_train.shuffle(buffer_size=50).batch(batch_size)
 y_train = y_train.shuffle(buffer_size=50).batch(batch_size)
 gc.collect()

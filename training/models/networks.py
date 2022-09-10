@@ -19,9 +19,11 @@ class Dice:
     def loss(self, y_true, y_pred):
         ndims = len(y_pred.get_shape().as_list()) - 2
         vol_axes = list(range(1, ndims+1))
-
+        
         top = 2 * tf.reduce_sum(y_true * y_pred, vol_axes)
         bottom = tf.reduce_sum(y_true + y_pred, vol_axes)
+        print("top", top)
+        print("bottom", bottom)
 
         div_no_nan = tf.math.divide_no_nan if hasattr(tf.math, 'divide_no_nan') else tf.div_no_nan
         dice = tf.reduce_mean(div_no_nan(top, bottom))
