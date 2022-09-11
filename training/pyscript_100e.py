@@ -41,8 +41,9 @@ def criterion_netME(y_true, y_pred):
     V_t_pred = warp(V_t, u)
 
     M_t_split = tf.split(M_t, M_t.shape[-1], -1)
-    M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), u) for mt in M_t_split], -1)    
-    M_0_pred  = keras.activations.softmax(M_0_pred)
+    M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), u) for mt in M_t_split], -1)
+    M_0_pred = tf.round(M_0_pred)    
+    # M_0_pred  = keras.activations.softmax(M_0_pred)
 
     lambda_i = np.array(0.01, dtype= np.float32)
     lambda_a = np.array(0.5, dtype= np.float32)
