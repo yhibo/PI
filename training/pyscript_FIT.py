@@ -1,18 +1,9 @@
 from models import deep_strain_model
-from datasets import base_dataset
-from datasets.nifti_dataset import resample_nifti
 from tensorflow.keras.optimizers import Adam
-from scipy.ndimage import center_of_mass
-from datasets.base_dataset import roll_and_pad_256x256_to_center_inv
-from datasets.base_dataset import _roll2center_crop
-from scipy.ndimage import gaussian_filter
 import numpy as np
-import SimpleITK as sitk
 from utils.strain_from_motion import *
 from utils.utils_aha import *
 import nibabel as nib
-from skimage.util import montage
-import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.backend as K 
@@ -20,7 +11,6 @@ from models.dense_image_warp import dense_image_warp3d as warp
 from models.networks_fit import *
 import os
 import gc
-import time
 
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:

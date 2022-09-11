@@ -9,3 +9,4 @@
 *.pdf
 .DS_Store
 *.cfg
+training/data/training/*

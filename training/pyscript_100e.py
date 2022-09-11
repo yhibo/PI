@@ -98,8 +98,8 @@ with strategy.scope():
 ######################### Data loading ######################################
 DATA_FOLDER = 'data/training'
 
-volumes_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}.nii.gz")) for i in range(1, 101)]
-segs_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}_seg.nii.gz")) for i in range(1, 101)]
+volumes_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}.nii.gz")) for i in range(1, 2)]
+segs_nifti = [nib.load(os.path.join(DATA_FOLDER, f"patient{i:03d}_seg.nii.gz")) for i in range(1, 2)]
 
 volumes = [normalize(v.get_fdata(dtype=np.float32), axis=(0, 1, 2)) for v in volumes_nifti]
 segs = [s.get_fdata() for s in segs_nifti]
@@ -187,7 +187,7 @@ del V0_train, Vt_train, M0_train, Mt_train, res_train
 gc.collect()
 
 
-for epoch in range(100):
+for epoch in range(300):
     start_time = time.time()
     print("Start of epoch %d" % (epoch,))
     # Iterate over the batches of the dataset.
