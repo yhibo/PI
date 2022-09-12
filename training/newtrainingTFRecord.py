@@ -54,22 +54,17 @@ def criterion_netME(y_true, y_pred):
     L_i = K.mean(K.abs(V_0_pred - V_0), axis=(1,2,3,4))
 
     # Anatomical loss
-    L_a = 0
-    L_a += dice.loss(K.cast(M_0==0, dtype=tf.float32), K.cast(M_0_pred==0, dtype=tf.float32))
-    L_a += dice.loss(K.cast(M_0==1, dtype=tf.float32), K.cast(M_0_pred==1, dtype=tf.float32))
-    L_a += dice.loss(K.cast(M_0==2, dtype=tf.float32), K.cast(M_0_pred==2, dtype=tf.float32))
-    L_a += dice.loss(K.cast(M_0==3, dtype=tf.float32), K.cast(M_0_pred==3, dtype=tf.float32))
-    L_a = L_a/4.0
+    L_a = dice.loss(M_0, M_0_pred)
 
     # Smoothness loss
-    resux = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
-    resuy = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
-    resuz = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
-    resu = tf.stack([resux, resuy, resuz], axis=-1)
-    resu = u*resu
-    L_s = grad.loss([],K.cast(resu,dtype=tf.float32))
+    # resux = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
+    # resuy = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
+    # resuz = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
+    # resu = tf.stack([resux, resuy, resuz], axis=-1)
+    # resu = u*resu
+    # L_s = grad.loss([],K.cast(resu,dtype=tf.float32))
 
-    return lambda_i * L_i + lambda_a * L_a + lambda_s * L_s
+    return lambda_i * L_i + lambda_a * L_a #+ lambda_s * L_s
 
 class CarMEN_options:
     def __init__(self):
