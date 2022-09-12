@@ -116,6 +116,8 @@ dataset = load_tfrecord('data/training/training.tfrecord')
 # shuffle and batch
 dataset = dataset.shuffle(50).batch(5)
 
+dataset = dataset.take(30)
+
 ##########################      MODEL     ######################################
 
 tf.debugging.set_log_device_placement(True)
