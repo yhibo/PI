@@ -57,12 +57,6 @@ def criterion_netME(y_true, y_pred):
     L_i = K.mean(K.abs(V_t_pred - V_0))
 
     # Anatomical loss
-    L_a = 0
-    L_a += dice.loss(K.cast(M_0==0, dtype=tf.float32), K.cast(M_0_pred==0, dtype=tf.float32))
-    L_a += dice.loss(K.cast(M_0==1, dtype=tf.float32), K.cast(M_0_pred==1, dtype=tf.float32))
-    L_a += dice.loss(K.cast(M_0==2, dtype=tf.float32), K.cast(M_0_pred==2, dtype=tf.float32))
-    L_a += dice.loss(K.cast(M_0==3, dtype=tf.float32), K.cast(M_0_pred==3, dtype=tf.float32))
-    L_a = L_a/4.0
 
     # Smoothness loss
     L_s = grad.loss([],K.cast(u,dtype=tf.float32))
