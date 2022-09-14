@@ -9,19 +9,22 @@ from models.networks import *
 from models import deep_strain_model
 from tensorflow.keras.optimizers import Adam
 import time
-from tensorflow.keras.layers import RandomFlip, RandomRotation
 
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-  try:
-    # Currently, memory growth needs to be the same across GPUs
-    for gpu in gpus:
-      tf.config.experimental.set_memory_growth(gpu, True)
-    logical_gpus = tf.config.list_logical_devices('GPU')
-    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-  except RuntimeError as e:
-    # Memory growth must be set before GPUs have been initialized
-    print(e)
+#tf.debugging.set_log_device_placement(True)
+gpus = tf.config.list_logical_devices('GPU')
+
+# if gpus:
+#   try:
+#     # Currently, memory growth needs to be the same across GPUs
+#     for gpu in gpus:
+#       tf.config.experimental.set_memory_growth(gpu, True)
+#     logical_gpus = tf.config.list_logical_devices('GPU')
+#     print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+#   except RuntimeError as e:
+#     # Memory growth must be set before GPUs have been initialized
+#     print(e)
+
+strategy = tf.distribute.MirroredStrategy(gpus)
 
 
 ##########################      Model Options     ######################################
@@ -45,7 +48,7 @@ def criterion_netME(y_true, y_pred):
 
     lambda_i = np.array(0.01, dtype= np.float32)
     lambda_a = np.array(0.5, dtype= np.float32)
-    lambda_s = np.array(0.001, dtype= np.float32)
+    lambda_s = np.array(0.1, dtype= np.float32)
 
     dice = Dice()
     grad = Grad()
@@ -58,9 +61,9 @@ def criterion_netME(y_true, y_pred):
     L_a = dice.loss(M_0, M_0_pred)
 
     # Smoothness loss
-    # resux = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
-    # resuy = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
-    # resuz = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)
+    # resux = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)*res[...,0,0,0,0]
+    # resuy = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)*res[...,1,0,0,0]
+    # resuz = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)*res[...,2,0,0,0]
     # resu = tf.stack([resux, resuy, resuz], axis=-1)
     # resu = u*resu
     # L_s = grad.loss([],K.cast(resu,dtype=tf.float32))
@@ -115,9 +118,9 @@ class Augment(tf.keras.layers.Layer):
     super().__init__()
     # both use the same seed, so they'll make the same random changes.
     self.augment_batch = tf.keras.Sequential([
-      tf.keras.layers.RandomFlip("horizontal_and_vertical", seed=None),
-      tf.keras.layers.RandomRotation(1, seed=None),
-      tf.keras.layers.RandomContrast(0.5, seed=None)
+      tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal_and_vertical", seed=None),
+      tf.keras.layers.experimental.preprocessing.RandomRotation(1, seed=None),
+      tf.keras.layers.experimental.preprocessing.RandomContrast(0.5, seed=None)
     ])
 
   def call(self, inputs, labels):
@@ -125,8 +128,8 @@ class Augment(tf.keras.layers.Layer):
     ## unstack batched labels shape (batch, 5, 128, 128, 16, 1) each in axis -2 and -5, and stack them back after augmentation
     ## concat after unstacking to generate one big batch
     nz = labels.shape[-2]
-
-    bigbatch = tf.concat(
+      
+    augmented = self.augment_batch(tf.concat(
       [tf.concat(tf.unstack(inputs['input_1'], axis=-2), axis=-1),
       tf.concat(tf.unstack(inputs['input_2'], axis=-2), axis=-1),
       tf.concat(tf.unstack(labels[:,0], axis=-2), axis=-1),
@@ -135,9 +138,7 @@ class Augment(tf.keras.layers.Layer):
       tf.concat(tf.unstack(labels[:,3], axis=-2), axis=-1),
       tf.concat(tf.unstack(labels[:,4], axis=-2), axis=-1)],
       axis=-1
-    )
-      
-    augmented = self.augment_batch(bigbatch)
+    ))
 
     inputs['input_1'] = tf.expand_dims(tf.stack(tf.unstack(augmented[...,:nz], axis=-1), axis=-1), axis=-1)
     inputs['input_2'] = tf.expand_dims(tf.stack(tf.unstack(augmented[...,nz:2*nz], axis=-1), axis=-1), axis=-1)
@@ -161,15 +162,12 @@ dataset = (
     dataset
     .cache()
     .shuffle(50)
-    .batch(5)
+    .batch(12)
     .map(Augment())
-    .prefetch(buffer_size=tf.data.AUTOTUNE))
+    .prefetch(buffer_size=tf.data.experimental.AUTOTUNE))
 
 ##########################      MODEL     ######################################
 
-tf.debugging.set_log_device_placement(True)
-gpus = tf.config.list_logical_devices('GPU')
-strategy = tf.distribute.MirroredStrategy(gpus)
 opt = CarMEN_options()
 
 with strategy.scope():
@@ -180,15 +178,15 @@ with strategy.scope():
 
 start_time = time.time()
 
-netME.fit(dataset, epochs=100)
+netME.fit(dataset, epochs=1000)
 
 print("--- %s seconds ---" % (time.time() - start_time))
 
-netME.save_weights("netME_weights_new_EDES.h5")
+netME.save_weights("netME_weights_new_EDES_12_1000.h5")
 
 
 
-
+ 
 
 
 
