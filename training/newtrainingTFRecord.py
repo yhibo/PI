@@ -9,6 +9,7 @@ from models.networks import *
 from models import deep_strain_model
 from tensorflow.keras.optimizers import Adam
 import time
+from tensorflow.keras.layers import RandomFlip, RandomRotation
 
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
@@ -44,7 +45,7 @@ def criterion_netME(y_true, y_pred):
 
     lambda_i = np.array(0.01, dtype= np.float32)
     lambda_a = np.array(0.5, dtype= np.float32)
-    lambda_s = np.array(0.1, dtype= np.float32)
+    lambda_s = np.array(0.001, dtype= np.float32)
 
     dice = Dice()
     grad = Grad()
@@ -63,8 +64,9 @@ def criterion_netME(y_true, y_pred):
     # resu = tf.stack([resux, resuy, resuz], axis=-1)
     # resu = u*resu
     # L_s = grad.loss([],K.cast(resu,dtype=tf.float32))
+    L_s = grad.loss([],u)
 
-    return lambda_i * L_i + lambda_a * L_a #+ lambda_s * L_s
+    return lambda_i * L_i + lambda_a * L_a + lambda_s * L_s
 
 class CarMEN_options:
     def __init__(self):
@@ -106,12 +108,66 @@ def load_tfrecord(filename):
     parsed_dataset = raw_dataset.map(parse_function)
     return parsed_dataset
 
-dataset = load_tfrecord('data/training/training.tfrecord')
+##########################      Data Aug     ######################################
+
+class Augment(tf.keras.layers.Layer):
+  def __init__(self, seed=42):
+    super().__init__()
+    # both use the same seed, so they'll make the same random changes.
+    self.augment_batch = tf.keras.Sequential([
+      tf.keras.layers.RandomFlip("horizontal_and_vertical", seed=seed),
+      tf.keras.layers.RandomRotation(1, seed=seed),
+      tf.keras.layers.RandomContrast(0.5, seed=seed)
+    ])
+
+  def call(self, inputs, labels):
+    ## unstack 2 batched inputs shape (batch, 128, 128, 16, 1) each in axis -2, and stack them back after augmentation
+    ## unstack batched labels shape (batch, 5, 128, 128, 16, 1) each in axis -2 and -5, and stack them back after augmentation
+    ## concat after unstacking to generate one big batch
+    batchsize = labels.shape[0]
+    nz = labels.shape[-2]
+    
+    bigbatch = tf.concat(
+      [tf.concat(tf.unstack(inputs[0], axis=-2), axis=-1),
+      tf.concat(tf.unstack(inputs[1], axis=-2), axis=-1),
+      tf.concat(tf.unstack(labels[:,0], axis=-2), axis=-1),
+      tf.concat(tf.unstack(labels[:,1], axis=-2), axis=-1),
+      tf.concat(tf.unstack(labels[:,2], axis=-2), axis=-1),
+      tf.concat(tf.unstack(labels[:,3], axis=-2), axis=-1),
+      tf.concat(tf.unstack(labels[:,4], axis=-2), axis=-1)],
+      axis=-1
+    )
+      
+    augmented = self.augment_batch(bigbatch)
+
+    inputs = [
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,:nz], axis=-1), axis=-1), axis=-1),
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,nz:2*nz], axis=-1), axis=-1), axis=-1),
+    ]
+
+    labels = tf.stack([
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,2*nz:3*nz], axis=-1), axis=-1), axis=-1),
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,3*nz:4*nz], axis=-1), axis=-1), axis=-1),
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,4*nz:5*nz], axis=-1), axis=-1), axis=-1),
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,5*nz:6*nz], axis=-1), axis=-1), axis=-1),
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,6*nz:7*nz], axis=-1), axis=-1), axis=-1),
+    ], axis=1)
+                        
+    return inputs, labels
+
+
+
+dataset = load_tfrecord('data/training/trainingEDES.tfrecord')
 
 # shuffle and batch
-dataset = dataset.shuffle(50).batch(5)
-
-dataset = dataset.take(30)
+dataset = (
+    dataset
+    .cache()
+    .shuffle(50)
+    .batch(5)
+    .repeat()
+    .map(Augment())
+    .prefetch(buffer_size=tf.data.AUTOTUNE))
 
 ##########################      MODEL     ######################################
 
@@ -132,7 +188,7 @@ netME.fit(dataset, epochs=100)
 
 print("--- %s seconds ---" % (time.time() - start_time))
 
-netME.save_weights("netME_weights_new.h5")
+netME.save_weights("netME_weights_new_EDES.h5")
 
 
 
