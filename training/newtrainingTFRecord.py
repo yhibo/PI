@@ -124,7 +124,6 @@ class Augment(tf.keras.layers.Layer):
     ## unstack 2 batched inputs shape (batch, 128, 128, 16, 1) each in axis -2, and stack them back after augmentation
     ## unstack batched labels shape (batch, 5, 128, 128, 16, 1) each in axis -2 and -5, and stack them back after augmentation
     ## concat after unstacking to generate one big batch
-    batchsize = labels.shape[0]
     nz = labels.shape[-2]
     
     bigbatch = tf.concat(
