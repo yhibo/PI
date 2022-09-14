@@ -115,9 +115,9 @@ class Augment(tf.keras.layers.Layer):
     super().__init__()
     # both use the same seed, so they'll make the same random changes.
     self.augment_batch = tf.keras.Sequential([
-      tf.keras.layers.RandomFlip("horizontal_and_vertical", seed=seed),
-      tf.keras.layers.RandomRotation(1, seed=seed),
-      tf.keras.layers.RandomContrast(0.5, seed=seed)
+      tf.keras.layers.RandomFlip("horizontal_and_vertical", seed=None),
+      tf.keras.layers.RandomRotation(1, seed=None),
+      tf.keras.layers.RandomContrast(0.5, seed=None)
     ])
 
   def call(self, inputs, labels):
@@ -125,10 +125,10 @@ class Augment(tf.keras.layers.Layer):
     ## unstack batched labels shape (batch, 5, 128, 128, 16, 1) each in axis -2 and -5, and stack them back after augmentation
     ## concat after unstacking to generate one big batch
     nz = labels.shape[-2]
-    
+
     bigbatch = tf.concat(
-      [tf.concat(tf.unstack(inputs[0], axis=-2), axis=-1),
-      tf.concat(tf.unstack(inputs[1], axis=-2), axis=-1),
+      [tf.concat(tf.unstack(inputs['input_1'], axis=-2), axis=-1),
+      tf.concat(tf.unstack(inputs['input_2'], axis=-2), axis=-1),
       tf.concat(tf.unstack(labels[:,0], axis=-2), axis=-1),
       tf.concat(tf.unstack(labels[:,1], axis=-2), axis=-1),
       tf.concat(tf.unstack(labels[:,2], axis=-2), axis=-1),
@@ -139,10 +139,8 @@ class Augment(tf.keras.layers.Layer):
       
     augmented = self.augment_batch(bigbatch)
 
-    inputs = [
-      tf.expand_dims(tf.stack(tf.unstack(augmented[...,:nz], axis=-1), axis=-1), axis=-1),
-      tf.expand_dims(tf.stack(tf.unstack(augmented[...,nz:2*nz], axis=-1), axis=-1), axis=-1),
-    ]
+    inputs['input_1'] = tf.expand_dims(tf.stack(tf.unstack(augmented[...,:nz], axis=-1), axis=-1), axis=-1)
+    inputs['input_2'] = tf.expand_dims(tf.stack(tf.unstack(augmented[...,nz:2*nz], axis=-1), axis=-1), axis=-1)
 
     labels = tf.stack([
       tf.expand_dims(tf.stack(tf.unstack(augmented[...,2*nz:3*nz], axis=-1), axis=-1), axis=-1),
@@ -164,7 +162,6 @@ dataset = (
     .cache()
     .shuffle(50)
     .batch(5)
-    .repeat()
     .map(Augment())
     .prefetch(buffer_size=tf.data.AUTOTUNE))
 
