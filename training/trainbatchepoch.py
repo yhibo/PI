@@ -160,7 +160,7 @@ dataset = load_tfrecord('data/training/trainingEDES.tfrecord')
 # shuffle and batch
 dataset = (
     dataset
-    .cache()
+    #.cache()
     #.shuffle(50)
     .batch(2)
     #.map(Augment())
