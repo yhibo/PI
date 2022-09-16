@@ -161,10 +161,12 @@ dataset = load_tfrecord('data/training/trainingEDES.tfrecord')
 dataset = (
     dataset
     .cache()
-    .shuffle(50)
-    .batch(12)
-    .map(Augment())
+    #.shuffle(50)
+    .batch(2)
+    #.map(Augment())
     .prefetch(buffer_size=tf.data.experimental.AUTOTUNE))
+
+dataset = dataset.take(1)
 
 ##########################      MODEL     ######################################
 
