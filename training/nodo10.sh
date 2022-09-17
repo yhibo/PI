@@ -4,11 +4,11 @@
 #$ -q gpu@compute-6-10
 #$ -l gpu=3
 #$ -l memoria_a_usar=20G
-#$ -N tt10e
+#$ -N tt12
 #
 #cargar variables de entorno para encontrar cuda
 module load miniconda
 conda activate pi
 
 
-python newtrainingTFRecord.py
+python trainbatchepoch.py

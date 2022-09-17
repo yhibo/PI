@@ -2,7 +2,7 @@
 #$ -j y
 #$ -S /bin/bash
 #$ -q gpu@compute-6-10
-#$ -l gpu=3
+#$ -l gpu=1
 #$ -l memoria_a_usar=20G
 #$ -N tt10e
 #

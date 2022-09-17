@@ -1,0 +1,36 @@
+#2022-02-10
+
+rocks run host compute-6-% command="nvidia-smi | grep NVIDIA-SMI" collate=yes| sort
+compute-6-0: | NVIDIA-SMI 460.56       Driver Version: 460.56       CUDA Version: 11.2     |
+compute-6-10: | NVIDIA-SMI 510.47.03    Driver Version: 510.47.03    CUDA Version: 11.6     |
+compute-6-1: | NVIDIA-SMI 460.56       Driver Version: 460.56       CUDA Version: 11.2     |
+compute-6-2: | NVIDIA-SMI 450.51.06    Driver Version: 450.51.06    CUDA Version: 11.0     |
+compute-6-3: | NVIDIA-SMI 460.56       Driver Version: 460.56       CUDA Version: 11.2     |
+compute-6-4: | NVIDIA-SMI 460.56       Driver Version: 460.56       CUDA Version: 11.2     |
+compute-6-5: | NVIDIA-SMI 430.50       Driver Version: 430.50       CUDA Version: 10.1     |
+compute-6-6: | NVIDIA-SMI 460.32.03    Driver Version: 460.32.03    CUDA Version: 11.2     |
+compute-6-7: | NVIDIA-SMI 460.32.03    Driver Version: 460.32.03    CUDA Version: 11.2     |
+compute-6-8: | NVIDIA-SMI 460.56       Driver Version: 460.56       CUDA Version: 11.2     |
+compute-6-9: | NVIDIA-SMI 460.56       Driver Version: 460.56       CUDA Version: 11.2     |
+
+rocks run host compute-6-% command="nvidia-smi  -L " collate=yes| sort
+compute-6-0: GPU 0: GeForce RTX 2080 Ti (UUID: GPU-e445d9be-0ed4-0cd6-d6a8-2241b0b25d98)
+compute-6-10: GPU 0: NVIDIA GeForce RTX 3080 (UUID: GPU-4a766570-7605-aef1-9316-49d220f649eb)
+compute-6-10: GPU 1: NVIDIA GeForce RTX 3080 (UUID: GPU-2c3e21fe-fdcf-0b0d-ca42-52038286937d)
+compute-6-10: GPU 2: NVIDIA GeForce RTX 3080 (UUID: GPU-d4214048-db10-d24f-f20c-e73e5151448e)
+compute-6-1: GPU 0: NVIDIA GeForce GTX 1080 Ti (UUID: GPU-2506bdf5-fa2a-44c9-d2a1-6825ef62a08c)
+compute-6-2: GPU 0: GeForce GTX TITAN X (UUID: GPU-b428df97-2ca3-a8c2-0c86-e9ca5351e7a3)
+compute-6-2: GPU 1: GeForce GTX TITAN Black (UUID: GPU-fb322e4d-732d-7ed3-0b29-344492291d47)
+compute-6-3: GPU 0: GeForce RTX 2070 (UUID: GPU-8a4a9a30-98f3-91b6-508b-52b4da956574)
+compute-6-3: GPU 1: GeForce RTX 2070 (UUID: GPU-bc5cd294-bf56-5549-b001-d53324fe4bb9)
+compute-6-4: GPU 0: GeForce RTX 2080 Ti (UUID: GPU-959e4ef1-35a5-bcf9-b7dc-f2c9374a980d)
+compute-6-5: GPU 0: GeForce RTX 2070 (UUID: GPU-4f46469b-c32b-9f61-f9c9-a6fff97eeffc)
+compute-6-6: GPU 0: Tesla K20Xm (UUID: GPU-d8da7ebe-f8f9-645d-6e7b-88776d25ede3)
+compute-6-6: GPU 1: Tesla K20Xm (UUID: GPU-93cad715-5b8e-220e-76b4-5a477d6430ec)
+compute-6-7: GPU 0: Tesla K20Xm (UUID: GPU-0afae843-73c4-e2c5-03ec-d5fbd48d56d8)
+compute-6-7: GPU 1: Tesla K20Xm (UUID: GPU-e2e754a7-e502-c044-6d4f-c460d94bc1f8)
+compute-6-8: GPU 0: NVIDIA GeForce RTX 3080 (UUID: GPU-e7f77454-3e7a-b62b-fe1d-88f8419216dd)
+compute-6-8: GPU 1: NVIDIA GeForce RTX 3080 Ti (UUID: GPU-58756a66-fff0-2549-6f85-ebcec9211929)
+compute-6-9: GPU 0: GeForce RTX 3080 (UUID: GPU-6c89e3cc-8fd5-900c-a64f-426832b435bb)
+compute-6-9: GPU 1: GeForce RTX 3080 (UUID: GPU-b59bdb32-e9c1-dcf3-a018-31f972d77d77)
+

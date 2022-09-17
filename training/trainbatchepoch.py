@@ -41,24 +41,26 @@ def criterion_netME(y_true, y_pred):
 
     V_0_pred = warp(V_t, u)
 
-    M_t_split = tf.split(M_t, M_t.shape[-1], -1)
-    M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), u) for mt in M_t_split], -1)
-    M_0_pred = tf.round(M_0_pred)
+    # M_t_split = tf.split(M_t, M_t.shape[-1], -1)
+    # M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), u) for mt in M_t_split], -1)
+    M_0_pred = warp(M_t, u)
+    # M_0_pred = tf.round(M_0_pred)
     # M_0_pred  = keras.activations.softmax(M_0_pred)
 
     lambda_i = np.array(0.01, dtype= np.float32)
     lambda_a = np.array(0.5, dtype= np.float32)
     lambda_s = np.array(0.1, dtype= np.float32)
 
-    dice = Dice()
+    #dice = Dice()
     grad = Grad()
 
     # Intensity loss
     
-    L_i = K.mean(K.abs(V_0_pred - V_0), axis=(1,2,3,4))
+    L_i = K.mean((V_0_pred - V_0)**2, axis=(1,2,3,4))
 
     # Anatomical loss
-    L_a = dice.loss(M_0, M_0_pred)
+    # L_a = dice.loss(M_0, M_0_pred)
+    L_a = K.mean((M_0_pred - M_0)**2, axis=(1,2,3,4))
 
     # Smoothness loss
     # resux = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)*res[...,0,0,0,0]
@@ -160,13 +162,13 @@ dataset = load_tfrecord('data/training/trainingEDES.tfrecord')
 # shuffle and batch
 dataset = (
     dataset
-    #.cache()
-    #.shuffle(50)
-    .batch(2)
-    #.map(Augment())
-    .prefetch(buffer_size=tf.data.experimental.AUTOTUNE))
+    .cache()
+    .shuffle(50)
+    .batch(12)
+    .map(Augment())
+    .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    )
 
-dataset = dataset.take(1)
 
 ##########################      MODEL     ######################################
 
@@ -180,11 +182,11 @@ with strategy.scope():
 
 start_time = time.time()
 
-netME.fit(dataset, epochs=1000)
+netME.fit(dataset, epochs=300)
 
 print("--- %s seconds ---" % (time.time() - start_time))
 
-netME.save_weights("netME_weights_new_EDES_12_1000.h5")
+netME.save_weights("netME_weights_new_EDES_12_300_reg.h5")
 
 
 

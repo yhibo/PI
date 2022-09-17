@@ -4,11 +4,11 @@
 #$ -q gpu@compute-6-4
 #$ -l gpu=1
 #$ -l memoria_a_usar=20G
-#$ -N tt10e
+#$ -N tt1_4
 #
 #cargar variables de entorno para encontrar cuda
 module load miniconda
-conda activate pi
+conda activate clonepi
 
 
-python newtrainingTFRecord.py
+python trainone.py
