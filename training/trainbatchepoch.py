@@ -37,7 +37,9 @@ def criterion_netME(y_true, y_pred):
     V_t = tf.expand_dims(y_true[:,1], axis=-1)
     M_0 = tf.expand_dims(y_true[:,2], axis=-1)
     M_t = tf.expand_dims(y_true[:,3], axis=-1)
-    res = tf.expand_dims(y_true[:,4], axis=-1)
+    resx = tf.expand_dims(y_true[:,4], axis=-1)
+    resy = tf.expand_dims(y_true[:,5], axis=-1)
+    resz = tf.expand_dims(y_true[:,6], axis=-1)
 
     V_0_pred = warp(V_t, u)
 
@@ -63,13 +65,8 @@ def criterion_netME(y_true, y_pred):
     L_a = K.mean((M_0_pred - M_0)**2, axis=(1,2,3,4))
 
     # Smoothness loss
-    # resux = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)*res[...,0,0,0,0]
-    # resuy = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)*res[...,1,0,0,0]
-    # resuz = tf.ones(tf.shape(u)[:-1], dtype=tf.float32)*res[...,2,0,0,0]
-    # resu = tf.stack([resux, resuy, resuz], axis=-1)
-    # resu = u*resu
-    # L_s = grad.loss([],K.cast(resu,dtype=tf.float32))
-    L_s = grad.loss([],u)
+    res = tf.concat([resx, resy, resz], axis=-1)
+    L_s = grad.loss([],u*res)
 
     return lambda_i * L_i + lambda_a * L_a + lambda_s * L_s
 
@@ -89,22 +86,28 @@ def parse_function(example_proto):
         'Vt': tf.io.FixedLenFeature([], tf.string),
         'M0': tf.io.FixedLenFeature([], tf.string),
         'Mt': tf.io.FixedLenFeature([], tf.string),
-        'res': tf.io.FixedLenFeature([], tf.string)
+        'resx': tf.io.FixedLenFeature([], tf.string),
+        'resy': tf.io.FixedLenFeature([], tf.string),
+        'resz': tf.io.FixedLenFeature([], tf.string)
     }
     parsed_features = tf.io.parse_single_example(example_proto, feature_description)
     V0 = tf.io.decode_raw(parsed_features['V0'], tf.float32)
     Vt = tf.io.decode_raw(parsed_features['Vt'], tf.float32)
     M0 = tf.io.decode_raw(parsed_features['M0'], tf.float32)
     Mt = tf.io.decode_raw(parsed_features['Mt'], tf.float32)
-    res = tf.io.decode_raw(parsed_features['res'], tf.float32)
+    resx = tf.io.decode_raw(parsed_features['resx'], tf.float32)
+    resy = tf.io.decode_raw(parsed_features['resy'], tf.float32)
+    resz = tf.io.decode_raw(parsed_features['resz'], tf.float32)
     V0 = tf.reshape(V0, [128, 128, 16, 1])
     Vt = tf.reshape(Vt, [128, 128, 16, 1])
     M0 = tf.reshape(M0, [128, 128, 16, 1])
     Mt = tf.reshape(Mt, [128, 128, 16, 1])
-    res = tf.reshape(res, [128, 128, 16, 1])
+    resx = tf.reshape(resx, [128, 128, 16, 1])
+    resy = tf.reshape(resy, [128, 128, 16, 1])
+    resz = tf.reshape(resz, [128, 128, 16, 1])
 
     x = {'input_1': V0, 'input_2': Vt}
-    y = tf.stack([V0, Vt, M0, Mt, res], axis=0)
+    y = tf.stack([V0, Vt, M0, Mt, resx, resy, resz], axis=0)
 
     return x,y
 
@@ -138,7 +141,9 @@ class Augment(tf.keras.layers.Layer):
       tf.concat(tf.unstack(labels[:,1], axis=-2), axis=-1),
       tf.concat(tf.unstack(labels[:,2], axis=-2), axis=-1),
       tf.concat(tf.unstack(labels[:,3], axis=-2), axis=-1),
-      tf.concat(tf.unstack(labels[:,4], axis=-2), axis=-1)],
+      tf.concat(tf.unstack(labels[:,4], axis=-2), axis=-1),
+      tf.concat(tf.unstack(labels[:,5], axis=-2), axis=-1),
+      tf.concat(tf.unstack(labels[:,6], axis=-2), axis=-1)], 
       axis=-1
     ))
 
@@ -151,13 +156,15 @@ class Augment(tf.keras.layers.Layer):
       tf.expand_dims(tf.stack(tf.unstack(augmented[...,4*nz:5*nz], axis=-1), axis=-1), axis=-1),
       tf.expand_dims(tf.stack(tf.unstack(augmented[...,5*nz:6*nz], axis=-1), axis=-1), axis=-1),
       tf.expand_dims(tf.stack(tf.unstack(augmented[...,6*nz:7*nz], axis=-1), axis=-1), axis=-1),
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,7*nz:8*nz], axis=-1), axis=-1), axis=-1),
+      tf.expand_dims(tf.stack(tf.unstack(augmented[...,8*nz:9*nz], axis=-1), axis=-1), axis=-1)
     ], axis=1)
                         
     return inputs, labels
 
 
 
-dataset = load_tfrecord('data/training/trainingEDES.tfrecord')
+dataset = load_tfrecord('data/training/trainingEDES_con_res.tfrecord')
 
 # shuffle and batch
 dataset = (
