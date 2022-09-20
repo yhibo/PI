@@ -46,14 +46,14 @@ def criterion_netME(y_true, y_pred):
     # M_t_split = tf.split(M_t, M_t.shape[-1], -1)
     # M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), u) for mt in M_t_split], -1)
     M_0_pred = warp(M_t, u)
-    # M_0_pred = tf.round(M_0_pred)
+    M_0_pred = tf.round(M_0_pred)
     # M_0_pred  = keras.activations.softmax(M_0_pred)
 
-    lambda_i = np.array(0.01, dtype= np.float32)
-    lambda_a = np.array(0.5, dtype= np.float32)
-    lambda_s = np.array(0.1, dtype= np.float32)
+    lambda_i = np.array(0.001, dtype= np.float32)
+    lambda_a = np.array(0.05, dtype= np.float32)
+    lambda_s = np.array(0.01, dtype= np.float32)
 
-    #dice = Dice()
+    dice = Dice()
     grad = Grad()
 
     # Intensity loss
@@ -61,14 +61,18 @@ def criterion_netME(y_true, y_pred):
     L_i = K.mean((V_0_pred - V_0)**2, axis=(1,2,3,4))
 
     # Anatomical loss
-    # L_a = dice.loss(M_0, M_0_pred)
-    L_a = K.mean((M_0_pred - M_0)**8, axis=(1,2,3,4))
+    L_a = dice.loss(K.cast(M_0==0, 'float32'), K.cast(M_0_pred==0, 'float32'))
+    L_a += dice.loss(K.cast(M_0==1, 'float32'), K.cast(M_0_pred==1, 'float32'))
+    L_a += dice.loss(K.cast(M_0==2, 'float32'), K.cast(M_0_pred==2, 'float32'))
+    L_a += dice.loss(K.cast(M_0==3, 'float32'), K.cast(M_0_pred==3, 'float32'))
+    L_a /= 4
+    # L_a = K.mean((M_0_pred - M_0)**2, axis=(1,2,3,4))
 
     # Smoothness loss
     res = tf.concat([resx, resy, resz], axis=-1)
     L_s = grad.loss([],u*res)
 
-    return lambda_i * L_i + lambda_a * L_a + lambda_s * L_s
+    return lambda_i * L_i + lambda_a * L_a + lambda_s * L_s + lambda_a
 
 class CarMEN_options:
     def __init__(self):
@@ -196,7 +200,7 @@ netME.fit(dataset, epochs=6000)
 
 print("--- %s seconds ---" % (time.time() - start_time))
 
-netME.save_weights("netME_weights_new_EDES_1_6000_reg.h5")
+netME.save_weights("netME_weights_new_EDES_1_6000_reg_dice.h5")
 
 
 
