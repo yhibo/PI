@@ -8,7 +8,7 @@
 #
 #cargar variables de entorno para encontrar cuda
 module load miniconda
-conda activate pi
+conda activate clonepi
 
 
-python newtrainingTFRecord.py
+python training.py --batch_size 5 --loss new --loss_weights 0.01 0.5 0.1 0.5 --shuffle_buffer_size 50

@@ -2,7 +2,7 @@
 #$ -j y
 #$ -S /bin/bash
 #$ -q gpu@compute-6-8
-#$ -l gpu=1
+#$ -l gpu=2
 #$ -l memoria_a_usar=20G
 #$ -N tt1_8
 #
@@ -11,9 +11,9 @@ module load miniconda
 conda activate pi
 
 
-echo DeviceID: $SGE_GPU
-
-#ejecutar binario con sus respectivos argumentos
-if [ $SGE_GPU == 1 ]; then
-	python trainone.py
-fi
+python training.py --batch_size 8 --loss new --loss_weights 0.01 0.5 0.01 5
+python training.py --batch_size 8 --loss new --loss_weights 0.01 0.5 0.001 5
+python training.py --batch_size 8 --loss new --loss_weights 0.01 0.5 1 0.5
+python training.py --batch_size 8 --loss new --loss_weights 0.01 0.5 2 0.5
+python training.py --batch_size 8 --loss new --loss_weights 0.01 0.1 0.1 0.5
+python training.py --batch_size 8 --loss new --loss_weights 0.01 0.1 0.1 0.1

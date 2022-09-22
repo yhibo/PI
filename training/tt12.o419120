@@ -1,0 +1,60 @@
+Allocated GPU(s) with id(s):  1 2 0
+Setting CUDA_VISIBLE_DEVICES=1,2,0
+Setting NV_GPU=1,2,0
+2022-09-20 23:43:44.141136: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcuda.so.1
+2022-09-20 23:43:47.153889: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:89:00.0 name: NVIDIA GeForce RTX 3080 computeCapability: 8.6
+coreClock: 1.71GHz coreCount: 68 deviceMemorySize: 9.78GiB deviceMemoryBandwidth: 707.88GiB/s
+2022-09-20 23:43:47.154232: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:b2:00.0 name: NVIDIA GeForce RTX 3080 computeCapability: 8.6
+coreClock: 1.755GHz coreCount: 68 deviceMemorySize: 9.78GiB deviceMemoryBandwidth: 707.88GiB/s
+2022-09-20 23:43:47.154542: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 2 with properties: 
+pciBusID: 0000:3e:00.0 name: NVIDIA GeForce RTX 3080 computeCapability: 8.6
+coreClock: 1.71GHz coreCount: 68 deviceMemorySize: 9.78GiB deviceMemoryBandwidth: 707.88GiB/s
+2022-09-20 23:43:47.155738: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudart.so.10.1
+2022-09-20 23:43:47.159326: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2022-09-20 23:43:47.163022: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2022-09-20 23:43:47.164222: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2022-09-20 23:43:47.167984: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2022-09-20 23:43:47.170041: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2022-09-20 23:43:47.177018: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2022-09-20 23:43:47.178670: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1703] Adding visible gpu devices: 0, 1, 2
+2022-09-20 23:43:47.179679: I tensorflow/core/platform/cpu_feature_guard.cc:143] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 AVX512F FMA
+2022-09-20 23:43:47.192911: I tensorflow/core/platform/profile_utils/cpu_utils.cc:102] CPU Frequency: 1900000000 Hz
+2022-09-20 23:43:47.193794: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x55b7dbf31830 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2022-09-20 23:43:47.193827: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+2022-09-20 23:43:47.414142: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x55b7dbfa77b0 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2022-09-20 23:43:47.414191: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): NVIDIA GeForce RTX 3080, Compute Capability 8.6
+2022-09-20 23:43:47.414202: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (1): NVIDIA GeForce RTX 3080, Compute Capability 8.6
+2022-09-20 23:43:47.414211: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (2): NVIDIA GeForce RTX 3080, Compute Capability 8.6
+2022-09-20 23:43:47.414993: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 0 with properties: 
+pciBusID: 0000:89:00.0 name: NVIDIA GeForce RTX 3080 computeCapability: 8.6
+coreClock: 1.71GHz coreCount: 68 deviceMemorySize: 9.78GiB deviceMemoryBandwidth: 707.88GiB/s
+2022-09-20 23:43:47.415276: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 1 with properties: 
+pciBusID: 0000:b2:00.0 name: NVIDIA GeForce RTX 3080 computeCapability: 8.6
+coreClock: 1.755GHz coreCount: 68 deviceMemorySize: 9.78GiB deviceMemoryBandwidth: 707.88GiB/s
+2022-09-20 23:43:47.415560: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1561] Found device 2 with properties: 
+pciBusID: 0000:3e:00.0 name: NVIDIA GeForce RTX 3080 computeCapability: 8.6
+coreClock: 1.71GHz coreCount: 68 deviceMemorySize: 9.78GiB deviceMemoryBandwidth: 707.88GiB/s
+2022-09-20 23:43:47.415610: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudart.so.10.1
+2022-09-20 23:43:47.415627: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2022-09-20 23:43:47.415642: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2022-09-20 23:43:47.415658: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2022-09-20 23:43:47.415673: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2022-09-20 23:43:47.415687: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2022-09-20 23:43:47.415701: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2022-09-20 23:43:47.417117: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1703] Adding visible gpu devices: 0, 1, 2
+2022-09-20 23:43:47.417155: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudart.so.10.1
+2022-09-20 23:43:47.418598: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1102] Device interconnect StreamExecutor with strength 1 edge matrix:
+2022-09-20 23:43:47.418616: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1108]      0 1 2 
+2022-09-20 23:43:47.418628: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 0:   N N N 
+2022-09-20 23:43:47.418636: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 1:   N N N 
+2022-09-20 23:43:47.418643: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1121] 2:   N N N 
+2022-09-20 23:43:47.419779: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1247] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 9215 MB memory) -> physical GPU (device: 0, name: NVIDIA GeForce RTX 3080, pci bus id: 0000:89:00.0, compute capability: 8.6)
+2022-09-20 23:43:47.420600: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1247] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:1 with 9215 MB memory) -> physical GPU (device: 1, name: NVIDIA GeForce RTX 3080, pci bus id: 0000:b2:00.0, compute capability: 8.6)
+2022-09-20 23:43:47.421369: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1247] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:2 with 9215 MB memory) -> physical GPU (device: 2, name: NVIDIA GeForce RTX 3080, pci bus id: 0000:3e:00.0, compute capability: 8.6)
+usage: training.py [-h] [--batch_size BATCH_SIZE] [--epochs EPOCHS] [--lr LR]
+                   [--loss LOSS]
+                   [--loss_weights LOSS_WEIGHTS [LOSS_WEIGHTS ...]]
+                   [--shuffle_buffer_size SHUFFLE_BUFFER_SIZE]
+training.py: error: unrecognized arguments: --loss_weigths 0.01 0.5 0.7
