@@ -11,4 +11,5 @@ module load miniconda
 conda activate pi
 
 
-python trainbatchepoch.py
+python training.py --loss dice --loss_weights 0.01 0.5 5 
+python training.py --loss dice --loss_weights 0.01 0.5 1
