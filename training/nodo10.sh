@@ -11,5 +11,8 @@ module load miniconda
 conda activate pi
 
 
-python training.py --loss dice --loss_weights 0.01 0.5 5 
-python training.py --loss dice --loss_weights 0.01 0.5 1
+python training.py --loss dice --loss_weights 0.01 0.5 4
+python training.py --loss dice --loss_weights 0.01 0.6 3.25
+python training.py --loss dice --loss_weights 0.01 0.5 3.5
+python training.py --loss dice --loss_weights 0.01 0.5 3.76
+python training.py --loss dice --loss_weights 0.01 0.5 3.83
