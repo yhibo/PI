@@ -6,9 +6,11 @@
 #$ -l memoria_a_usar=20G
 #$ -N tt12
 #
-#cargar variables de entorno para encontrar cuda
+#cargar variables de entorno para encontrar 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/yhibo.radlovacki/.conda/envs/pi3/lib/
+module load cuda
 module load miniconda
-conda activate pi
+conda activate pi3
 
 
 python training.py --loss dice --loss_weights 0.01 0.5 0.1 0.01

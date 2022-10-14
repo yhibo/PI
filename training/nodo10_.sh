@@ -7,8 +7,10 @@
 #$ -N tt12_
 #
 #cargar variables de entorno para encontrar cuda
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/share/apps/miniconda3/lib
+module load cuda
 module load miniconda
-conda activate pi
+conda activate pi3
 
 
-python training.py --loss loss_MSE --loss_weights 0.01 0.5 1.5
+python training.py --loss dice --loss_weights 0.01 0.5 0.1 0.01

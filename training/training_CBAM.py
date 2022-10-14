@@ -284,7 +284,6 @@ dataset = (
     .batch(BATCHSIZE)
     .map(Augment())
     .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-    .take(2)
     )
 
 ############################################ MODEL ############################################

@@ -16,7 +16,6 @@ class Dice:
     """
     N-D dice for segmentation
     """
-    @tf.function
     def loss(self, y_true, y_pred):
         ndims = len(y_pred.get_shape().as_list()) - 2
         vol_axes = list(range(1, ndims+1))
@@ -40,7 +39,6 @@ class Grad:
         self.penalty = penalty
         self.loss_mult = loss_mult
 
-    @tf.function
     def _diffs(self, y):
         vol_shape = y.get_shape().as_list()[1:-1]
         ndims = len(vol_shape)
@@ -62,7 +60,6 @@ class Grad:
 
         return df
 
-    @tf.function
     def loss(self, _, y_pred):
 
         if self.penalty == 'l1':
