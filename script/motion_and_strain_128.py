@@ -28,7 +28,7 @@ class CarMEN_options:
         self.isTrain = False
         self.volume_shape = (128, 128, 16, 1)
         self.pretrained_models_netS = "models/carson_Jan2021.h5"
-        self.pretrained_models_netME = "models/carmen_Jan2021.h5"
+        self.pretrained_models_netME = "models/netME_epochs500_batch12_lr0.0001_loss_dice_loss_weights_0.01_0.5_0.1_0.01_10.0.h5"
 
 
 #########################     Motion and Strain   ######################################

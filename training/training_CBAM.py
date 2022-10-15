@@ -1,10 +1,12 @@
-import tensorflow as tf
-from tensorflow.keras import backend as K
-from models.dense_image_warp import dense_image_warp3d as warp
-from models.networks_CBAM import Dice, Grad, CarMEN
-from tensorflow.keras.optimizers import Adam
-import time
 import argparse
+import time
+
+import tensorflow as tf
+from models.dense_image_warp import dense_image_warp3d as warp
+from models.networks import Dice, Grad
+from models.networks_CBAM import CarMEN
+from tensorflow.keras import backend as K
+from tensorflow.keras.optimizers import Adam
 
 #tf.debugging.set_log_device_placement(True)
 gpus = tf.config.list_logical_devices('GPU')
@@ -14,10 +16,10 @@ strategy = tf.distribute.MirroredStrategy(gpus)
 
 parser = argparse.ArgumentParser(description='Train netME')
 parser.add_argument('--batch_size', type=int, default=12, help='Batch size')
-parser.add_argument('--epochs', type=int, default=300, help='Number of epochs')
+parser.add_argument('--epochs', type=int, default=500, help='Number of epochs')
 parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
 parser.add_argument('--loss', type=str, default='dice', help='Loss function')
-parser.add_argument('--loss_weights', type=float, nargs='+', default=[0.01, 0.5, 0.1, 0], help='Loss weights')
+parser.add_argument('--loss_weights', type=float, nargs='+', default=[0.01, 0.5, 0.1, 0.01, 10], help='Loss weights')
 parser.add_argument('--shuffle_buffer_size', type=int, default=100, help='Shuffle buffer size')
 
 args = parser.parse_args()
@@ -29,8 +31,9 @@ LOSS = args.loss
 lambda_i = args.loss_weights[0]
 lambda_a = args.loss_weights[1]
 lambda_s = args.loss_weights[2]
-if len(args.loss_weights) == 4:
-    lambda_c = args.loss_weights[3]
+lambda_n = args.loss_weights[3] if len(args.loss_weights) > 3 else 0.01
+lambda_c = args.loss_weights[4] if len(args.loss_weights) > 4 else 0
+
 SHUFFLE_BUFFER_SIZE = args.shuffle_buffer_size
 
 ##########################      Model Options     ######################################
@@ -48,12 +51,21 @@ def loss_dice(y_true, y_pred):
     resy = tf.expand_dims(y_true[:,5], axis=-1)
     resz = tf.expand_dims(y_true[:,6], axis=-1)
 
-    V_0_pred = warp(V_t, u)
+    M_0_GT0 = K.cast(M_0 < 0.5, 'float32')
+    M_0_GT1 = K.cast(tf.logical_and(M_0 > 0.5, M_0 < 1.5), 'float32')
+    M_0_GT2 = K.cast(tf.logical_and(M_0 > 1.5, M_0 < 2.5), 'float32')
+    M_0_GT3 = K.cast(M_0 > 2.5, 'float32')
 
-    M_0_pred0 = warp(K.cast(M_t==0, 'float32'), u)
-    M_0_pred1 = warp(K.cast(M_t==1, 'float32'), u)
-    M_0_pred2 = warp(K.cast(M_t==2, 'float32'), u)
-    M_0_pred3 = warp(K.cast(M_t==3, 'float32'), u)
+    M_t_GT0 = K.cast(M_t < 0.5, 'float32')
+    M_t_GT1 = K.cast(tf.logical_and(M_t > 0.5, M_t < 1.5), 'float32')
+    M_t_GT2 = K.cast(tf.logical_and(M_t > 1.5, M_t < 2.5), 'float32')
+    M_t_GT3 = K.cast(M_t > 2.5, 'float32')
+
+    V_0_pred = warp(V_t, u)
+    M_0_pred0 = warp(M_t_GT0, u)
+    M_0_pred1 = warp(M_t_GT1, u)
+    M_0_pred2 = warp(M_t_GT2, u)
+    M_0_pred3 = warp(M_t_GT3, u)
 
     dice = Dice()
     grad = Grad(penalty='l2')
@@ -62,17 +74,25 @@ def loss_dice(y_true, y_pred):
     L_i = K.mean(abs(V_0_pred - V_0), axis=(1,2,3,4))
 
     # Anatomical loss
-    L_a = dice.loss(K.cast(M_0==0, 'float32'), M_0_pred0)
-    L_a += dice.loss(K.cast(M_0==1, 'float32'), M_0_pred1)
-    L_a += dice.loss(K.cast(M_0==2, 'float32'), M_0_pred2)
-    L_a += dice.loss(K.cast(M_0==3, 'float32'), M_0_pred3)
+    L_a = dice.loss(M_0_GT0, M_0_pred0)
+    L_a += dice.loss(M_0_GT1, M_0_pred1)
+    L_a += dice.loss(M_0_GT2, M_0_pred2)
+    L_a += dice.loss(M_0_GT3, M_0_pred3)
     L_a /= 4
+    L_a += 1
+
+    # Custom loss
+    L_c = K.mean((M_0_GT2-M_0_pred2*M_0_GT2)**2)
 
     # Smoothness loss
     res = tf.concat([resx, resy, resz], axis=-1)
     L_s = grad.loss([],u*res)
 
-    return lambda_i * L_i + lambda_a * L_a + lambda_s * L_s + lambda_a
+    # Norm loss outside myocardium
+    mask = tf.cast(tf.logical_not(M_0_GT2>0), tf.float32)
+    L_n = K.mean((u*mask)**2, axis=(1,2,3,4))
+
+    return (lambda_i * L_i + lambda_a * L_a + lambda_s * L_s + lambda_n * L_n + lambda_c * L_c)
 
 ##### LOSS 2 #####
 @tf.function
@@ -304,13 +324,14 @@ print("--- %s seconds ---" % (time.time() - start_time))
 
 ############################################ SAVING ############################################
 
-model_name = 'netME_CBAM'
+model_name = 'netME'
 model_name += '_epochs' + str(EPOCHS)
 model_name += '_batch' + str(BATCHSIZE)
 model_name += '_lr' + str(LR)
 model_name += '_loss_' + str(LOSS)
-model_name += '_loss_weights_' + str(lambda_i) + '_' + str(lambda_a) + '_' + str(lambda_s)
-if len(args.loss_weights) == 4:
+model_name += ('_loss_weights_' + str(lambda_i) + '_' + str(lambda_a) +
+               '_' + str(lambda_s) + '_' + str(lambda_n))
+if len(args.loss_weights) > 4:
     model_name += '_' + str(lambda_c)
 model_name += '.h5'
 

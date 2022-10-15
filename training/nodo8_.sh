@@ -11,9 +11,9 @@ module load miniconda
 conda activate pi
 
 
-python training.py --batch_size 8 --loss new --loss_weights 0.01 0.5 0.01 0 5
-python training.py --batch_size 8 --loss new --loss_weights 0.01 0.5 0.001 0 5
-python training.py --batch_size 8 --loss new --loss_weights 0.01 0.5 1 0 0.5
-python training.py --batch_size 8 --loss new --loss_weights 0.01 0.5 2 0 0.5
-python training.py --batch_size 8 --loss new --loss_weights 0.01 0.1 0.1 0 0.5
-python training.py --batch_size 8 --loss new --loss_weights 0.01 0.1 0.1 0 0.1z
+python training_CBAM.py --loss dice --loss_weights 0.01 0.1 0.1 0.0001 10
+python training_CBAM.py --loss dice --loss_weights 0.01 0.1 0.5 0.0001 10
+python training_CBAM.py --loss dice --loss_weights 0.01 0.05 0.1 0.0001 5
+python training_CBAM.py --loss dice --loss_weights 0.01 0.05 0.1 0.0001 10
+python training_CBAM.py --loss dice --loss_weights 0.01 0.05 0.1 0.0001 20
+python training_CBAM.py --loss dice --loss_weights 0.01 0.05 0.1 0.0001 30

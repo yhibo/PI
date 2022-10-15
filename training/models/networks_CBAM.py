@@ -4,10 +4,14 @@
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from tensorflow import keras 
+from tensorflow import keras
 from tensorflow.keras import layers, models
-from tensorflow.keras.layers import PReLU, BatchNormalization, UpSampling2D, UpSampling3D, Conv2D, Conv3D, Add, Concatenate
+from tensorflow.keras.layers import (Add, BatchNormalization, Concatenate,
+                                     Conv2D, Conv3D, PReLU, UpSampling2D,
+                                     UpSampling3D)
+
 from .dense_image_warp import dense_image_warp3d as warp
+
 
 ##############################################
 #################### LOSSES ##################
