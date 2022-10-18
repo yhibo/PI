@@ -331,7 +331,7 @@ class _KSAC33(tf.keras.layers.Layer):
                 for _ in self._dilation_rates]
 
     def build(self, input_shape):
-        k_shape = (3, 3, 1, input_shape[-1], self._filters)
+        k_shape = (3, 3, input_shape[-1], self._filters)
         k_init = eval('tf.keras.initializers.' + self._kernel_initializer)()
         self.kernel = tf.Variable(
             k_init(k_shape), trainable=True, name='kernel')
@@ -341,7 +341,7 @@ class _KSAC33(tf.keras.layers.Layer):
 
     def call(self, x, training: bool = False):
         feature_maps = [
-            tf.nn.conv3d(x, self.kernel, (1, 1, 1, 1, 1), 'SAME', dilations=(1, d, d, 1, 1))
+            tf.nn.conv2d(x, self.kernel, (1, 1), 'SAME', dilations=d)
             for d in self._dilation_rates
         ]
         if hasattr(self, 'bns'):
@@ -361,21 +361,21 @@ class _KSACPooling(tf.keras.layers.Layer):
             bias_initializer='zeros'):
         super().__init__()
         self._filters = filters
-        self.conv = tf.keras.layers.Conv3D(filters, 1, (1, 1, 1), use_bias=False)
+        self.conv = tf.keras.layers.Conv2D(filters, 1, (1, 1), use_bias=False)
         if use_bn:
             self.bn = tf.keras.layers.BatchNormalization(center=False)
 
     def build(self, input_shape):
-        self.conv.build([input_shape[0], 1, 1, 1, input_shape[-1]])
+        self.conv.build([input_shape[0], 1, 1, input_shape[-1]])
         if hasattr(self, 'bn'):
-            self.bn.build([input_shape[0], 1, 1, 1, self._filters])
+            self.bn.build([input_shape[0], 1, 1, self._filters])
 
     def call(self, x, training: bool = False):
-        x = tf.reduce_mean(x, axis=[1, 2, 3], keepdims=True)
+        x = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
         x = self.conv(x)
         if hasattr(self, 'bn'):
             x = self.bn(x)
-        return UpSampling3D(size=(x.shape[1], x.shape[2], x.shape[3]))(x)
+        return tf.image.resize(images=x, size=x.shape[1:-1])
 
 
 class KernelSharingAtrousConvolution(tf.keras.layers.Layer):
@@ -388,7 +388,7 @@ class KernelSharingAtrousConvolution(tf.keras.layers.Layer):
         super().__init__()
         self._filters = filters
         self.ksac_11 = tf.keras.Sequential(
-            [tf.keras.layers.Conv3D(filters, 1, (1, 1, 1), use_bias=False)]
+            [tf.keras.layers.Conv2D(filters, 1, (1, 1), use_bias=False)]
             + ([tf.keras.layers.BatchNormalization(center=False)]
                 if use_bn else []))
         self.ksac_33 = _KSAC33(
@@ -442,7 +442,11 @@ def attention_encoder(Conv, layer_input, filters, kernel_size=3, strides=2):
     dr, d = conv(Conv, d, filters, kernel_size=kernel_size, strides=strides, residual=True)
     #d  = Conv(filters, kernel_size=kernel_size, strides=1, padding='same')(d)
     d  = CBAM3D(d, filters, kernel_size, strides=1, padding='same', activation='leaky_relu', use_bn=True)
-    d = KernelSharingAtrousConvolution(filters, dilation_rates=(1, 3, 6), use_bn=True)(d)
+    ksac = KernelSharingAtrousConvolution(filters, dilation_rates=(6, 12, 18), use_bn=True)
+    ksac_slices = []
+    for i in range(d.shape[-2]):
+        ksac_slices.append(ksac(d[..., i, :]))
+    d = tf.stack(ksac_slices, axis=-2)
     d  = Add()([dr, d])
     return d
 
