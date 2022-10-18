@@ -324,7 +324,7 @@ print("--- %s seconds ---" % (time.time() - start_time))
 
 ############################################ SAVING ############################################
 
-model_name = 'netME'
+model_name = 'netME_CBAM'
 model_name += '_epochs' + str(EPOCHS)
 model_name += '_batch' + str(BATCHSIZE)
 model_name += '_lr' + str(LR)
@@ -335,4 +335,4 @@ if len(args.loss_weights) > 4:
     model_name += '_' + str(lambda_c)
 model_name += '.h5'
 
-netME.save_weights(model_name)
+netME.save(model_name)

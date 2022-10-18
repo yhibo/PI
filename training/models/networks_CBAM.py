@@ -340,7 +340,7 @@ def attention_encoder(Conv, layer_input, filters, kernel_size=3, strides=2):
     """Layers for 2D/3D network used during downsampling: CD=Convolution-BatchNorm-LeakyReLU"""
     d = conv(Conv, layer_input, filters, kernel_size=kernel_size, strides=1)
     dr, d = conv(Conv, d, filters, kernel_size=kernel_size, strides=strides, residual=True)
-    d  = Conv(filters, kernel_size=kernel_size, strides=1, padding='same')(d)
+    #d  = Conv(filters, kernel_size=kernel_size, strides=1, padding='same')(d)
     d  = CBAM3D(d, filters, kernel_size, strides=1, padding='same', activation='leaky_relu', use_bn=True)
     d  = Add()([dr, d])
     return d

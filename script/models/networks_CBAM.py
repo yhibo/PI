@@ -16,7 +16,6 @@ class Dice:
     """
     N-D dice for segmentation
     """
-    @tf.function
     def loss(self, y_true, y_pred):
         ndims = len(y_pred.get_shape().as_list()) - 2
         vol_axes = list(range(1, ndims+1))
@@ -40,7 +39,6 @@ class Grad:
         self.penalty = penalty
         self.loss_mult = loss_mult
 
-    @tf.function
     def _diffs(self, y):
         vol_shape = y.get_shape().as_list()[1:-1]
         ndims = len(vol_shape)
@@ -62,7 +60,6 @@ class Grad:
 
         return df
 
-    @tf.function
     def loss(self, _, y_pred):
 
         if self.penalty == 'l1':
@@ -339,7 +336,7 @@ def attention_encoder(Conv, layer_input, filters, kernel_size=3, strides=2):
     """Layers for 2D/3D network used during downsampling: CD=Convolution-BatchNorm-LeakyReLU"""
     d = conv(Conv, layer_input, filters, kernel_size=kernel_size, strides=1)
     dr, d = conv(Conv, d, filters, kernel_size=kernel_size, strides=strides, residual=True)
-    d  = Conv(filters, kernel_size=kernel_size, strides=1, padding='same')(d)
+    #d  = Conv(filters, kernel_size=kernel_size, strides=1, padding='same')(d)
     d  = CBAM3D(d, filters, kernel_size, strides=1, padding='same', activation='leaky_relu', use_bn=True)
     d  = Add()([dr, d])
     return d
