@@ -8,7 +8,7 @@
 #
 #cargar variables de entorno para encontrar cuda
 module load miniconda
-conda activate clonepi
+conda activate pi
 
 
-python training_CBAM_singlegpu.py --batch_size 4 --loss dice --loss_weights 0.01 0.1 0.1 0.0001 10
+python training_CBAM_KSAC.py --batch_size 4 --loss dice --loss_weights 0.01 0.1 0.1 0.0001 10

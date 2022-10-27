@@ -340,7 +340,6 @@ def attention_encoder(Conv, layer_input, filters, kernel_size=3, strides=2):
     """Layers for 2D/3D network used during downsampling: CD=Convolution-BatchNorm-LeakyReLU"""
     d = conv(Conv, layer_input, filters, kernel_size=kernel_size, strides=1)
     dr, d = conv(Conv, d, filters, kernel_size=kernel_size, strides=strides, residual=True)
-    #d  = Conv(filters, kernel_size=kernel_size, strides=1, padding='same')(d)
     d  = CBAM3D(d, filters, kernel_size, strides=1, padding='same', activation='leaky_relu', use_bn=True)
     d  = Add()([dr, d])
     return d
@@ -348,6 +347,14 @@ def attention_encoder(Conv, layer_input, filters, kernel_size=3, strides=2):
 def decoder(Conv, UpSampling, layer_input, skip_input, filters, kernel_size=3, strides=2):
     """Layers for 2D/3D network used during upsampling"""
     u = conv(Conv, layer_input, filters, kernel_size=1, strides=1)
+    u = deconv(Conv, UpSampling, u, filters, kernel_size=kernel_size, strides=strides)
+    u = Concatenate()([u, skip_input])
+    u = conv(Conv, u, filters, kernel_size=kernel_size, strides=1)
+    return u
+
+def attention_decoder(Conv, UpSampling, layer_input, skip_input, filters, kernel_size=3, strides=2):
+    """Layers for 2D/3D network used during upsampling"""
+    u  = CBAM3D(layer_input, filters, kernel_size, strides=1, padding='same', activation='leaky_relu', use_bn=True)
     u = deconv(Conv, UpSampling, u, filters, kernel_size=kernel_size, strides=strides)
     u = Concatenate()([u, skip_input])
     u = conv(Conv, u, filters, kernel_size=kernel_size, strides=1)
@@ -379,7 +386,7 @@ def encoder_decoder(x, gf=64, nchannels=3, map_activation=None):
     u3 = decoder(Conv, UpSampling, u2, d4, gf*8, strides=strides, kernel_size=kernel_size)
     u4 = decoder(Conv, UpSampling, u3, d3, gf*4, strides=strides, kernel_size=kernel_size)
     u5 = decoder(Conv, UpSampling, u4, d2, gf*2, strides=strides, kernel_size=kernel_size)
-    u6 = decoder(Conv, UpSampling, u5, d1, gf*1, strides=strides, kernel_size=kernel_size)
+    u6 = attention_decoder(Conv, UpSampling, u5, d1, gf*1, strides=strides, kernel_size=kernel_size)
 
     u7 = UpSampling(size=strides)(u6)
     u7 = Conv(nchannels, kernel_size=kernel_size, strides=1, padding='same', activation=map_activation)(u7)    

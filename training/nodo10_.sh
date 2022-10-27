@@ -13,4 +13,5 @@ module load miniconda
 conda activate pi3
 
 
-python training.py --loss dice --loss_weights 0.01 0.5 0.1 0.01
+python training_CBAM_KSAC.py --epochs 300 --batch_size 9 --loss old --loss_weights 0.01 0.5 2.5
+python training_CBAM_KSAC.py --epochs 500 --batch_size 9 --loss old --loss_weights 0.01 0.5 2.5

@@ -11,4 +11,4 @@ module load miniconda
 conda activate clonepi
 
 
-python training_CBAM_singlegpu.py --batch_size 4 --loss dice --loss_weights 0.01 0.3 0.5 0.0001 10
+python training_CBAM_KSAC.py --batch_size 8 --loss dice --loss_weights 0.1 0.2 0.1 0 8

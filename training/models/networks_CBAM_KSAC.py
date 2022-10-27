@@ -313,103 +313,129 @@ def CBAM3D(tensor,
 
     return ti
 
-class _KSAC33(tf.keras.layers.Layer):
+@tf.keras.utils.register_keras_serializable()
+class ShareConv3D(tf.keras.layers.Layer):
+    def __init__(self,
+                 weights,
+                 padding,
+                 strides,
+                 dilations,
+                 use_bias=False,
+                 **kwargs):
+        super(ShareConv3D, self).__init__(**kwargs)
+        #  self.weights = weights
+        self.use_bias = use_bias
+        self.w = weights[0]
+        if self.use_bias:
+            self.b = weights[1]
+        self.padding = padding.upper()
+        self.strides = strides
+        self.dilations = dilations
 
-    def __init__(
-            self,
-            filters: int,
-            dilation_rates: tp.Iterable[int] = (6, 12, 18),
-            use_bn: bool = True,
-            kernel_initializer='glorot_uniform'):
-        super().__init__()
-        self._filters = filters
-        self._dilation_rates = dilation_rates
-        self._kernel_initializer = kernel_initializer
-        if use_bn:
-            self.bns = [
-                tf.keras.layers.BatchNormalization(center=False)
-                for _ in self._dilation_rates]
+    def call(self, inputs):
+        ti = tf.nn.convolution(inputs,
+                          self.w,
+                          padding=self.padding,
+                          strides=self.strides,
+                          dilations=self.dilations)
+        if self.use_bias:
+            ti = ti + self.b
+        return ti
 
-    def build(self, input_shape):
-        k_shape = (3, 3, input_shape[-1], self._filters)
-        k_init = eval('tf.keras.initializers.' + self._kernel_initializer)()
-        self.kernel = tf.Variable(
-            k_init(k_shape), trainable=True, name='kernel')
-        if hasattr(self, 'bns'):
-            for bn in self.bns:
-                bn.build(input_shape[:-1] + [self._filters])
+    def get_config(self):
+        config = super(ShareConv3D, self).get_config()
+        if self.use_bias:
+            config.update({'weights': [self.w.numpy(), self.b.numpy()]})
+        else:
+            config.update({'weights': [self.w.numpy()]})
+        config.update({
+            'padding': self.padding,
+            'strides': self.strides,
+            'dilations': self.dilations,
+            'use_bias': self.use_bias,
+        })
+        return config
 
-    def call(self, x, training: bool = False):
-        feature_maps = [
-            tf.nn.conv2d(x, self.kernel, (1, 1), 'SAME', dilations=d)
-            for d in self._dilation_rates
-        ]
-        if hasattr(self, 'bns'):
-            feature_maps = [
-                bn(h, training=training)
-                for h, bn in zip(feature_maps, self.bns)]
-        return sum(feature_maps)
+def KSAC3D(ti, nf, rates=[4, 8], activation='swish', dw_separable=False, id=[0]):
+    """Original Kernel-Sharing Atrous Convolution block Huan et al.
+    """
 
+    id[0] += 1
 
-class _KSACPooling(tf.keras.layers.Layer):
+    # 1x1 Conv.
+    if dw_separable:
+        # TODO: Not implemented throw and error
+        t1 = layers.SeparableConv3D(nf,
+                                    1,
+                                    strides=1,
+                                    padding='same',
+                                    use_bias=False)(ti)
+    else:
+        t1 = layers.Conv3D(nf, 1, strides=1, padding='same',
+                           use_bias=False)(ti)
+    # Global Average Pool + Conv + BN + Activation + Upsampling
+    # Expand dimensions (None,1,1,1,#)
+    t2 = tf.reduce_mean(ti, axis=(1, 2, 3))
+    t2 = t2[:, tf.newaxis, tf.newaxis, tf.newaxis, :]
+    if dw_separable:
+        # TODO: Not implemented throw and error
+        t2 = layers.SeparableConv3D(nf,
+                                    1,
+                                    strides=1,
+                                    padding='same',
+                                    use_bias=False)(t2)
+    else:
+        t2 = layers.Conv3D(nf, 1, strides=1, padding='same',
+                           use_bias=False)(t2)
 
-    def __init__(
-            self,
-            filters: int,
-            use_bn: bool = True,
-            kernel_initializer='glorot_uniform',
-            bias_initializer='zeros'):
-        super().__init__()
-        self._filters = filters
-        self.conv = tf.keras.layers.Conv2D(filters, 1, (1, 1), use_bias=False)
-        if use_bn:
-            self.bn = tf.keras.layers.BatchNormalization(center=False)
+    t2 = layers.BatchNormalization()(t2)
+    if activation.lower() == 'leaky_relu':
+        t2 = layers.LeakyReLU()(t2)
+    else:
+        t2 = layers.Activation(activation.lower())(t2)
+    t2 = layers.UpSampling3D(K.int_shape(ti)[1:4])(t2)
+    # Sharing Conv. Layer
+    cl = layers.Conv3D(nf,
+                       3,
+                       strides=1,
+                       padding='same',
+                       use_bias=False,
+                       name='share%i_r1' % id[0])
+    # Share Dilate convolution
+    t = cl(ti)  # Dilation 1 + BN + Act
+    t = layers.BatchNormalization()(t)
+    if activation.lower() == 'leaky_relu':
+        t = layers.LeakyReLU()(t)
+    else:
+        t = layers.Activation(activation.lower())(t)
+    kst = [t]
+    for r in rates:
+        # 3D -> H,W,D
+        strides = (1, ) + cl.strides + (1, )
+        # factor to dilate for [N,H,W,D,C]
+        #  dilations = (1, ) + (2**1, ) * 3 + (1, )
+        dilations = (1, ) + (r, ) * 3 + (1, )
+        t = ShareConv3D(cl.weights,
+                        padding=cl.padding,
+                        strides=strides,
+                        dilations=dilations,
+                        name='share%i_r%i' % (id[0], r))(ti)
+        t = layers.BatchNormalization()(t)
+        if activation.lower() == 'leaky_relu':
+            t = layers.LeakyReLU()(t)
+        else:
+            t = layers.Activation(activation.lower())(t)
+        kst.append(t)
 
-    def build(self, input_shape):
-        self.conv.build([input_shape[0], 1, 1, input_shape[-1]])
-        if hasattr(self, 'bn'):
-            self.bn.build([input_shape[0], 1, 1, self._filters])
-
-    def call(self, x, training: bool = False):
-        x = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
-        x = self.conv(x)
-        if hasattr(self, 'bn'):
-            x = self.bn(x)
-        return tf.image.resize(images=x, size=x.shape[1:-1])
-
-
-class KernelSharingAtrousConvolution(tf.keras.layers.Layer):
-    
-    def __init__(
-            self, 
-            filters: int, 
-            dilation_rates: tp.Iterable[int] = (6, 12, 18), 
-            use_bn: bool = True):
-        super().__init__()
-        self._filters = filters
-        self.ksac_11 = tf.keras.Sequential(
-            [tf.keras.layers.Conv2D(filters, 1, (1, 1), use_bias=False)]
-            + ([tf.keras.layers.BatchNormalization(center=False)]
-                if use_bn else []))
-        self.ksac_33 = _KSAC33(
-            filters=filters, dilation_rates=dilation_rates, use_bn=use_bn)
-        self.ksac_pool = _KSACPooling(filters=filters, use_bn=use_bn)
-
-    def build(self, input_shape):
-        self.ksac_11.build(input_shape)
-        self.ksac_33.build(input_shape)
-        self.ksac_pool.build(input_shape)
-        init = tf.zeros_initializer()
-        self.bias = tf.Variable(
-            init((self._filters,)), trainable=True, name='bias')
-
-    def call(self, x, training: bool = False):
-        return tf.nn.relu(
-            self.ksac_11(x, training=training)
-            + self.ksac_33(x, training=training)
-            + self.ksac_pool(x, training=training)
-            + self.bias)
-
+    # Concatenation
+    t_output = layers.Concatenate()([t1, t2] + kst)
+    # Combine to fix into nf
+    t_output = conv3D(t_output,
+                      nf,
+                      1,
+                      activation=activation,
+                      dw_separable=dw_separable)
+    return t_output
 
 def conv(Conv, layer_input, filters, kernel_size=3, strides=1, residual=False):
     """Convolution layer: Ck=Convolution-BatchNorm-PReLU"""
@@ -436,17 +462,11 @@ def encoder(Conv, layer_input, filters, kernel_size=3, strides=2):
     d  = Add()([dr, d])
     return d
 
-def attention_encoder(Conv, layer_input, filters, kernel_size=3, strides=2):
+def attention_KSAC_encoder(Conv, layer_input, filters, kernel_size=3, strides=2):
     """Layers for 2D/3D network used during downsampling: CD=Convolution-BatchNorm-LeakyReLU"""
-    d = conv(Conv, layer_input, filters, kernel_size=kernel_size, strides=1)
+    d  = CBAM3D(layer_input, filters, kernel_size, strides=1, padding='same', activation='leaky_relu', use_bn=True)
     dr, d = conv(Conv, d, filters, kernel_size=kernel_size, strides=strides, residual=True)
-    #d  = Conv(filters, kernel_size=kernel_size, strides=1, padding='same')(d)
-    d  = CBAM3D(d, filters, kernel_size, strides=1, padding='same', activation='leaky_relu', use_bn=True)
-    ksac = KernelSharingAtrousConvolution(filters, dilation_rates=(6, 12, 18), use_bn=True)
-    ksac_slices = []
-    for i in range(d.shape[-2]):
-        ksac_slices.append(ksac(d[..., i, :]))
-    d = tf.stack(ksac_slices, axis=-2)
+    d = KSAC3D(d, filters, rates=(2, 3))
     d  = Add()([dr, d])
     return d
 
@@ -456,6 +476,14 @@ def decoder(Conv, UpSampling, layer_input, skip_input, filters, kernel_size=3, s
     u = deconv(Conv, UpSampling, u, filters, kernel_size=kernel_size, strides=strides)
     u = Concatenate()([u, skip_input])
     u = conv(Conv, u, filters, kernel_size=kernel_size, strides=1)
+    return u
+
+def attention_KSAC_decoder(Conv, UpSampling, layer_input, skip_input, filters, kernel_size=3, strides=2):
+    """Layers for 2D/3D network used during downsampling: CD=Convolution-BatchNorm-LeakyReLU"""
+    u = KSAC3D(layer_input, filters, rates=(2, 3))
+    u = deconv(Conv, UpSampling, u, filters, kernel_size=kernel_size, strides=strides)
+    u = Concatenate()([u, skip_input])
+    u  = CBAM3D(u, filters, kernel_size, strides=1, padding='same', activation='leaky_relu', use_bn=True)
     return u
 
 def encoder_decoder(x, gf=64, nchannels=3, map_activation=None):
@@ -471,7 +499,7 @@ def encoder_decoder(x, gf=64, nchannels=3, map_activation=None):
         strides     = (2,2)
         kernel_size = (3,3)
             
-    d1 = attention_encoder(Conv, x,  gf*1, strides=strides, kernel_size=kernel_size)
+    d1 = attention_KSAC_encoder(Conv, x,  gf*1, strides=strides, kernel_size=kernel_size)
     d2 = encoder(Conv, d1, gf*2, strides=strides, kernel_size=kernel_size)
     d3 = encoder(Conv, d2, gf*4, strides=strides, kernel_size=kernel_size)
     d4 = encoder(Conv, d3, gf*8, strides=strides, kernel_size=kernel_size)
@@ -484,7 +512,7 @@ def encoder_decoder(x, gf=64, nchannels=3, map_activation=None):
     u3 = decoder(Conv, UpSampling, u2, d4, gf*8, strides=strides, kernel_size=kernel_size)
     u4 = decoder(Conv, UpSampling, u3, d3, gf*4, strides=strides, kernel_size=kernel_size)
     u5 = decoder(Conv, UpSampling, u4, d2, gf*2, strides=strides, kernel_size=kernel_size)
-    u6 = decoder(Conv, UpSampling, u5, d1, gf*1, strides=strides, kernel_size=kernel_size)
+    u6 = attention_KSAC_decoder(Conv, UpSampling, u5, d1, gf*1, strides=strides, kernel_size=kernel_size)
 
     u7 = UpSampling(size=strides)(u6)
     u7 = Conv(nchannels, kernel_size=kernel_size, strides=1, padding='same', activation=map_activation)(u7)    
@@ -530,9 +558,6 @@ class CarMEN():
             model.compile(loss=None, 
                           optimizer=self.optimizer(learning_rate=0))
         else:
-            # model.compile(loss=self.opt.criterion_netME, 
-            #               loss_weights=loss_w, 
-            #               optimizer=self.optimizer(learning_rate=self.opt.netME_lr))
             model.compile(loss=self.opt.criterion_netME, 
                           optimizer=self.optimizer(learning_rate=self.opt.netME_lr))
     def get_model(self):    
@@ -546,34 +571,6 @@ class CarMEN():
             model = keras.Model(inputs=[V_0, V_t], outputs=u)
             self.compile_model(model)
         else:
-            # inputs  = []
-            # outputs = []
-            # loss_w  = []
-            # if self.opt.lambda_i > 0.0:
-            #     # 1. Intensity loss term
-            #     V_0_pred = warp(V_t, u)
-            #     inputs  += [V_0, V_t]
-            #     outputs += [V_0_pred]
-            #     loss_w  += [self.opt.lambda_i]
-            # if self.opt.lambda_a > 0.0:
-            #     # 2. Anatomical loss term
-            #     M_0 = keras.Input(shape=self.opt.label_shape)
-            #     M_t = keras.Input(shape=self.opt.label_shape)
-            #     M_t_split = tf.split(M_t, M_t.shape[-1], -1)
-            #     M_0_pred  = K.concatenate([warp(K.cast(mt, K.dtype(V_t)), u) for mt in M_t_split], -1)    
-            #     M_0_pred  = keras.activations.softmax(M_0_pred)                
-            #     inputs  += [M_0, M_t]
-            #     outputs += [M_0_pred]  
-            #     loss_w  += [self.opt.lambda_a]
-            # if self.opt.lambda_s > 0.0:   
-            #     # 3. Smoothness loss term adjusted by resolution
-            #     res = keras.Input(shape=(1,1,1,3))
-            #     inputs  += [res]
-            #     outputs += [u*res]  
-            #     loss_w  += [self.opt.lambda_s]
-
-            # model = keras.Model(inputs=inputs, outputs=outputs)
-            # self.compile_model(model, loss_w=loss_w)
             model = keras.Model(inputs=[V_0, V_t], outputs=u)
             self.compile_model(model)
             

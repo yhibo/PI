@@ -11,4 +11,4 @@ module load miniconda
 conda activate clonepi
 
 
-python training.py --batch_size 4 --loss dice --loss_weights 0.1 0.2 0.1 0 10
+python training.py --batch_size 4 --loss dice --loss_weights 0.1 0.2 0.1 0 8
