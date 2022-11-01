@@ -7,11 +7,13 @@
 #$ -N tt12_
 #
 #cargar variables de entorno para encontrar cuda
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/share/apps/miniconda3/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/yhibo.radlovacki/.conda/envs/pi3/lib/
 module load cuda
 module load miniconda
 conda activate pi3
 
 
-python training_CBAM_KSAC.py --epochs 300 --batch_size 9 --loss old --loss_weights 0.01 0.5 2.5
-python training_CBAM_KSAC.py --epochs 500 --batch_size 9 --loss old --loss_weights 0.01 0.5 2.5
+python training_CBAM.py --epochs 500 --batch_size 12 --loss dice --loss_weights 0.01 0.5 0.1
+python training_CBAM.py --epochs 500 --batch_size 12 --loss dice --loss_weights 0.01 0.5 0.1 1.5 5
+python training_CBAM.py --epochs 500 --batch_size 12 --loss dice --loss_weights 0.01 0.5 0.1 1.5 1
+python training_CBAM.py --epochs 500 --batch_size 12 --loss dice --loss_weights 0.01 0.5 0.1 1.5 2

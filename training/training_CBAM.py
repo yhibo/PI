@@ -81,16 +81,19 @@ def loss_dice(y_true, y_pred):
     L_a /= 4
     L_a += 1
 
-    # Custom loss
-    L_c = K.mean((M_0_GT2-M_0_pred2*M_0_GT2)**2)
-
     # Smoothness loss
     res = tf.concat([resx, resy, resz], axis=-1)
     L_s = grad.loss([],u*res)
 
-    # Norm loss outside myocardium
-    mask = tf.cast(tf.logical_not(M_0_GT2>0), tf.float32)
-    L_n = K.mean((u*mask)**2, axis=(1,2,3,4))
+    # Consistency loss
+    L_n = K.mean(K.abs(K.mean(M_0_GT0, axis=(1,2,4)) - K.mean(M_0_pred0, axis=(1,2,4))))
+    L_n += K.mean(K.abs(K.mean(M_0_GT1, axis=(1,2,4)) - K.mean(M_0_pred1, axis=(1,2,4))))
+    L_n += K.mean(K.abs(K.mean(M_0_GT2, axis=(1,2,4)) - K.mean(M_0_pred2, axis=(1,2,4))))
+    L_n += K.mean(K.abs(K.mean(M_0_GT3, axis=(1,2,4)) - K.mean(M_0_pred3, axis=(1,2,4))))
+    L_n /= 4
+
+    # Custom loss
+    L_c = K.mean((M_0_GT2-M_0_pred2*M_0_GT2)**2)
 
     return (lambda_i * L_i + lambda_a * L_a + lambda_s * L_s + lambda_n * L_n + lambda_c * L_c)
 
@@ -187,15 +190,60 @@ class CarMEN_options:
 
 ############################################ DATA AUGMENTATION ############################################
 
+class Center_of_Scalar:
+    def __init__(self, shape):
+      X, Y, Z = tf.meshgrid(tf.range(shape[0]), tf.range(shape[1]), tf.range(shape[2]), indexing='ij')
+      self.mesh = tf.cast(tf.stack([X, Y, Z], axis=-1), tf.float32)
+
+    def __call__(self, img):
+      centers = tf.reduce_sum(self.mesh * img, axis=(1,2,3), keepdims=True) / tf.reduce_sum(img, axis=(1,2,3), keepdims=True)
+      return centers
+
+    def get_mesh(self):
+      return self.mesh
+
+
 class Augment(tf.keras.layers.Layer):
-  def __init__(self, seed=42):
+  def __init__(self, seed=None, volume_shape=(128, 128, 16), **kwargs):
     super().__init__()
     # both use the same seed, so they'll make the same random changes.
     self.augment_batch = tf.keras.Sequential([
-      tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal_and_vertical", seed=None),
-      tf.keras.layers.experimental.preprocessing.RandomRotation(1, seed=None),
-      tf.keras.layers.experimental.preprocessing.RandomTranslation(0.1, 0.1, seed=None)
+      tf.keras.layers.experimental.preprocessing.RandomFlip("horizontal_and_vertical", seed=seed),
+      tf.keras.layers.experimental.preprocessing.RandomRotation(1, seed=seed),
+      tf.keras.layers.experimental.preprocessing.RandomTranslation(0.1, 0.1, seed=seed)
     ])
+    self.CoS = Center_of_Scalar(volume_shape)
+    self.volume_shape = volume_shape
+
+  def expand_z_image_flow(self, img, mask, flow):
+    nx, ny, _ = self.volume_shape
+    mean = tf.math.reduce_mean(img, axis=[1,2,3], keepdims=True)
+    mean = tf.repeat(mean, nx, axis=1)
+    mean = tf.repeat(mean, ny, axis=2)
+    zeros = tf.zeros_like(flow)
+    zeros = tf.reduce_sum(zeros, axis=-2, keepdims=True)
+    img = tf.concat([mean, img, mean], axis=3)
+    flow  = tf.concat([zeros, flow, zeros], axis=3)
+    zeros = tf.reduce_sum(zeros, axis=-1, keepdims=True)
+    mask = tf.concat([zeros, mask, zeros], axis=3)
+    return img, mask, flow
+
+  def random_warp_z(self, img, mask, flowmult):
+
+    centersz = self.CoS(img)[...,2]
+    mesh = self.CoS.get_mesh()
+
+    flow = tf.stack([tf.zeros_like(img[...,0]),
+                    tf.zeros_like(img[...,0]),
+                    tf.ones_like(img[...,0])*mesh[...,2] - centersz], axis=-1)
+    flow /= tf.reduce_max(tf.abs(flow), axis=(1,2,3,4), keepdims=True)
+    flow = flow * tf.cast(tf.random.uniform([1,], minval=0, maxval=4, dtype=tf.int32), tf.float32)
+    flow = tf.cast(tf.cast(flow, tf.int32), tf.float32)
+    flow = flow*flowmult
+
+    img, mask, flow = self.expand_z_image_flow(img, mask, flow)
+
+    return warp(img, flow)[..., 1:-1, :], warp(mask, flow)[..., 1:-1, :]
 
   def call(self, inputs, labels):
     ## unstack 2 batched inputs shape (batch, 128, 128, 16, 1) each in axis -2, and stack them back after augmentation
@@ -223,6 +271,7 @@ class Augment(tf.keras.layers.Layer):
 
     input1 = augmented[...,:nz]
     input2 = augmented[...,nz:2*nz]
+    label4 = augmented[...,5*nz:6*nz]
 
     gamma = tf.random.uniform(shape=[1,], minval=0.7, maxval=1.3)[0]
     input1 = tf.image.adjust_gamma(input1, gamma=gamma)
@@ -234,6 +283,11 @@ class Augment(tf.keras.layers.Layer):
 
     input1 = tf.expand_dims(tf.stack(tf.unstack(input1, axis=-1), axis=-1), axis=-1)
     input2 = tf.expand_dims(tf.stack(tf.unstack(input2, axis=-1), axis=-1), axis=-1)
+    label4 = tf.expand_dims(tf.stack(tf.unstack(label4, axis=-1), axis=-1), axis=-1)
+
+    preserveED = tf.reduce_sum(input1 - input2, axis=(1,2,3,4), keepdims=True)
+    preserveED = tf.cast(tf.greater(tf.abs(preserveED), 1e-8), tf.float32)
+    input2, label4 = self.random_warp_z(input2, label4, preserveED)
 
     axes = [1, 2, 3]
     mean = tf.reduce_mean(input1, axis=axes, keepdims=True)
@@ -250,7 +304,7 @@ class Augment(tf.keras.layers.Layer):
       input1,
       input2,
       tf.expand_dims(tf.stack(tf.unstack(augmented[...,4*nz:5*nz], axis=-1), axis=-1), axis=-1),
-      tf.expand_dims(tf.stack(tf.unstack(augmented[...,5*nz:6*nz], axis=-1), axis=-1), axis=-1),
+      label4,
       tf.expand_dims(tf.stack(tf.unstack(augmented[...,6*nz:7*nz], axis=-1), axis=-1), axis=-1),
       tf.expand_dims(tf.stack(tf.unstack(augmented[...,7*nz:8*nz], axis=-1), axis=-1), axis=-1),
       tf.expand_dims(tf.stack(tf.unstack(augmented[...,8*nz:9*nz], axis=-1), axis=-1), axis=-1)
@@ -305,7 +359,7 @@ dataset = (
     .cache()
     .shuffle(SHUFFLE_BUFFER_SIZE)
     .batch(BATCHSIZE)
-    .map(Augment())
+    .map(Augment(volume_shape=(128, 128, 16)))
     .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     )
 
